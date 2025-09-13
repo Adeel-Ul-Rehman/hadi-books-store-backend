@@ -1,37 +1,25 @@
 import jwt from 'jsonwebtoken';
 
 const userAuth = async (req, res, next) => {
-  const { token } = req.cookies;
-
-  if (!token) {
-    return res.status(401).json({ 
-      success: false, 
-      message: "Not authorized - Please login first" 
-    });
-  }
-
   try {
-    const tokenDecode = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Verify token has required fields
-    if (!tokenDecode?.id) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid token format"
-      });
+    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Not authenticated' });
     }
 
-    // Attach to both req.user and req.userId for compatibility
-    req.user = { id: tokenDecode.id };
-    req.userId = tokenDecode.id;
-    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded.id) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+
+    req.userId = decoded.id; // Set userId for controllers
     next();
   } catch (error) {
-    console.error('JWT Verification Error:', error.message);
-    return res.status(401).json({ 
-      success: false, 
-      message: "Session expired - Please login again" 
-    });
+    console.error('Authentication error:', error);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+    return res.status(401).json({ success: false, message: 'Not authenticated' });
   }
 };
 

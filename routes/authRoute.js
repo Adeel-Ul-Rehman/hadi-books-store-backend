@@ -1,35 +1,34 @@
 import express from 'express';
 import {
-  isAuthenticated,
+  register,
   login,
   logout,
-  register,
-  resetPassword,
-  sendResetOtp,
-  sendVerifyOtp,
-  verifyResetOtp,
   verifyEmail,
+  sendVerifyOtp,
+  isAuthenticated,
+  sendResetOtp,
+  verifyResetOtp,
+  resetPassword,
   updateProfile,
   deleteAccount,
-  uploadProfilePicture,
-  removeProfilePicture
+  removeProfilePicture,
 } from '../controllers/authController.js';
 import userAuth from '../middleware/userAuth.js';
+import upload from '../middleware/multer.js';
 
 const authRouter = express.Router();
 
 authRouter.post('/register', register);
 authRouter.post('/login', login);
 authRouter.post('/logout', logout);
-authRouter.post('/send-verify-otp', userAuth, sendVerifyOtp);
-authRouter.post('/verify-account', userAuth, verifyEmail);
+authRouter.post('/send-verify-otp', sendVerifyOtp); // Removed userAuth to make public
+authRouter.post('/verify-account', verifyEmail); // Removed userAuth to make public
 authRouter.post('/is-auth', userAuth, isAuthenticated);
 authRouter.post('/send-reset-otp', sendResetOtp);
 authRouter.post('/verify-reset-otp', verifyResetOtp);
 authRouter.post('/reset-password', resetPassword);
-authRouter.put('/update-profile', userAuth, updateProfile);
+authRouter.put('/update-profile', userAuth, upload.single('file'), updateProfile);
 authRouter.delete('/delete-account', userAuth, deleteAccount);
-authRouter.post('/upload-profile-picture', userAuth, uploadProfilePicture);
 authRouter.delete('/remove-profile-picture', userAuth, removeProfilePicture);
 
 export default authRouter;

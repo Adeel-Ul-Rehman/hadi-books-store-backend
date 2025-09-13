@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String     @id @default(uuid())
+  name               String     @db.VarChar(20)
+  lastName           String?    @db.VarChar(20)
+  email              String     @unique
+  password           String
+  address            String?
+  postCode           String?
+  city               String?
+  country            String?
+  shippingAddress    String?
+  mobileNumber       String?
+  verifyOtp          String     @default("")
+  verifyOtpExpireAt  Int        @default(0)
+  isAccountVerified  Boolean    @default(false)
+  resetOtp           String     @default("")
+  resetOtpExpireAt   Int        @default(0)
+  account_created_at DateTime   @default(now())
+  profilePicture     String?
+  cart               Cart?
+  orders             Order[]
+  reviews            Review[]
+  wishlist           Wishlist?
+
+  @@index([email])
+  @@map("users")
+}
+
+model Admin {
+  id               Int      @id @default(autoincrement())
+  name             String   @db.VarChar(20)
+  email            String   @unique
+  password         String
+  profilePicture   String?
+  sharedEmail      String?
+  resetOtp         String   @default("")
+  resetOtpExpireAt Int      @default(0)
+
+  @@index([email])
+  @@map("admins")
+}
+
+model Product {
+  id            String         @id @default(uuid())
+  name          String         @unique @db.VarChar(255)
+  description   String
+  price         Float          // Required: Displayed price (e.g., 999)
+  originalPrice Float?         // Optional: Crossed-out price (e.g., 1499)
+  image         String
+  category      String         @db.VarChar(100)
+  subCategories String[]
+  author        String         @db.VarChar(100)
+  isbn          String?        @unique
+  language      String         @db.VarChar(50)
+  date          BigInt
+  bestseller    Boolean        @default(false)
+  availability  Boolean        @default(true)
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  reviews       Review[]
+  wishlistItems WishlistItem[]
+
+  @@index([category])
+  @@index([author])
+  @@index([language])
+  @@map("products")
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  userId    String     @unique @map("user_id")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+
+  @@index([userId])
+  @@map("carts")
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int      @map("cart_id")
+  productId String   @map("product_id")
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+  @@index([cartId, productId])
+  @@map("cart_items")
+}
+
+model Wishlist {
+  id        Int            @id @default(autoincrement())
+  userId    String         @unique @map("user_id")
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  itemLimit Int            @default(10)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WishlistItem[]
+
+  @@index([userId])
+  @@map("wishlists")
+}
+
+model WishlistItem {
+  id         Int      @id @default(autoincrement())
+  wishlistId Int      @map("wishlist_id")
+  productId  String   @map("product_id")
+  createdAt  DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id])
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+
+  @@unique([wishlistId, productId])
+  @@index([wishlistId, productId])
+  @@map("wishlist_items")
+}
+
+model Order {
+  id                   String     @id @default(uuid())
+  userId               String     @map("user_id")
+  totalPrice           Float
+  status               String     @default("pending") // e.g., pending, confirmed, shipped, delivered
+  paymentStatus        String     @default("not_paid") // paid, not_paid
+  shippingAddress      String?
+  paymentMethod        String?    // Optional for backward compatibility
+  shippingMethod       String?    // e.g., Pakistan Post, Leopards, TCS
+  trackingId           String?    // Replaces trackingNumber
+  estimatedDelivery    DateTime?  // Estimated delivery date
+  taxes                Float      @default(0)
+  shippingFee          Float      @default(0)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  user                 User       @relation(fields: [userId], references: [id])
+  items                OrderItem[]
+  payment              Payment?
+
+  @@index([userId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   String   @map("order_id") // Updated to String for UUID
+  productId String   @map("product_id")
+  quantity  Int      @default(1)
+  price     Float
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([orderId, productId])
+  @@map("order_items")
+}
+
+model Payment {
+  id               String     @id @default(uuid())
+  orderId          String     @unique @map("order_id") // Updated to String for UUID
+  paymentMethod    String     // e.g., JazzCash, EasyPaisa, BankTransfer
+  transactionId    String?    // For JazzCash/EasyPaisa transaction IDs
+  status           String     @default("pending") // pending, completed, failed, refunded
+  amount           Float
+  bankAccount      String?    // For Bank Transfer: account number
+  bankName         String?    // For Bank Transfer: e.g., HBL, UBL
+  paymentProof     String?    // Optional URL for proof of payment
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  order            Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  productId String   @map("product_id")
+  userId    String   @map("user_id")
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([productId, userId])
+  @@map("reviews")
+}
+
+model HeroImage {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String   @unique @map("image_url") @db.VarChar(500)
+  altText   String?  @map("alt_text") @db.VarChar(200)
+  isActive  Boolean  @default(true) @map("is_active")
+  
+  @@map("hero_images")
+}

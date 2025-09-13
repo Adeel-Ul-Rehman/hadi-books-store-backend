@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Product Upload - Hadi Books Store</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+        .json-input {
+            font-family: 'Fira Code', 'Monaco', 'Consolas', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .drag-over {
+            border: 2px dashed #3b82f6;
+            background-color: #eff6ff;
+        }
+        .toastify-success {
+            background: #10b981;
+        }
+        .toastify-error {
+            background: #ef4444;
+        }
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Bulk Product Upload</h1>
+            <p class="text-gray-600">Quickly add products to Hadi Books Store using JSON data</p>
+        </header>
+
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-yellow-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700">
+                        <strong>Note:</strong> This tool connects directly to your backend at localhost:4000. 
+                        Make sure your server is running before uploading products.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Instructions and Template -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">How to Use</h2>
+                
+                <div class="mb-6">
+                    <h3 class="font-medium mb-2 text-gray-700">Required Fields:</h3>
+                    <ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
+                        <li><span class="font-mono">name</span> (max 255 characters)</li>
+                        <li><span class="font-mono">description</span> (max 1000 characters)</li>
+                        <li><span class="font-mono">price</span> (number greater than 0)</li>
+                        <li><span class="font-mono">category</span></li>
+                        <li><span class="font-mono">author</span></li>
+                        <li><span class="font-mono">language</span></li>
+                    </ul>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="font-medium mb-2 text-gray-700">Optional Fields:</h3>
+                    <ul class="list-disc list-inside space-y-1 text-sm text-gray-600">
+                        <li><span class="font-mono">originalPrice</span> (number greater than 0)</li>
+                        <li><span class="font-mono">isbn</span></li>
+                        <li><span class="font-mono">subCategories</span> (array or JSON string)</li>
+                    </ul>
+                </div>
+
+                <h3 class="font-medium mb-2 text-gray-700">JSON Template:</h3>
+                <div class="bg-gray-100 p-4 rounded-md overflow-x-auto">
+                    <pre class="text-sm json-input">{
+  "name": "Book Name",
+  "description": "Book description...",
+  "price": 19.99,
+  "originalPrice": 24.99,
+  "category": "Fiction",
+  "subCategories": ["Novel", "Adventure"],
+  "author": "Author Name",
+  "isbn": "1234567890",
+  "language": "English"
+}</pre>
+                </div>
+            </div>
+
+            <!-- Upload Form -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Upload Product</h2>
+                
+                <form id="upload-form">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="json-data">
+                            Product JSON Data
+                        </label>
+                        <textarea
+                            id="json-data"
+                            class="w-full h-64 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 json-input"
+                            placeholder="Paste product JSON data here"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="image-input">
+                            Product Image
+                        </label>
+                        <div 
+                            id="drop-zone" 
+                            class="border-2 border-dashed border-gray-300 rounded-md p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
+                        >
+                            <i class="fas fa-cloud-upload-alt text-gray-400 text-3xl mb-2"></i>
+                            <p class="text-gray-500">Drag & drop an image here or click to browse</p>
+                            <input
+                                id="image-input"
+                                type="file"
+                                accept="image/*"
+                                class="hidden"
+                            />
+                        </div>
+                        <p id="file-name" class="text-sm text-gray-500 mt-2 hidden"></p>
+                    </div>
+                    
+                    <div id="validation-errors" class="mb-4 hidden p-3 bg-red-50 text-red-700 rounded-md border border-red-200">
+                        <h4 class="font-bold mb-1">Validation Errors:</h4>
+                        <ul class="list-disc list-inside" id="error-list"></ul>
+                    </div>
+                    
+                    <button
+                        type="submit"
+                        id="submit-btn"
+                        class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition-colors flex items-center justify-center"
+                    >
+                        <span id="btn-text">Add Product</span>
+                        <span id="btn-spinner" class="ml-2 hidden">
+                            <div class="loading-spinner"></div>
+                        </span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Upload History -->
+        <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Upload History</h2>
+            <div id="upload-history" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body" class="bg-white divide-y divide-gray-200">
+                        <!-- History will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Backend URL - change if needed
+        const backendURL = 'http://localhost:4000';
+
+        // DOM elements
+        const jsonInput = document.getElementById('json-data');
+        const imageInput = document.getElementById('image-input');
+        const dropZone = document.getElementById('drop-zone');
+        const fileName = document.getElementById('file-name');
+        const uploadForm = document.getElementById('upload-form');
+        const validationErrors = document.getElementById('validation-errors');
+        const errorList = document.getElementById('error-list');
+        const submitBtn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const historyBody = document.getElementById('history-body');
+
+        // Drag and drop functionality
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight() {
+            dropZone.classList.add('drag-over');
+        }
+
+        function unhighlight() {
+            dropZone.classList.remove('drag-over');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) {
+                imageInput.files = files;
+                updateFileName(files[0].name);
+            }
+        }
+
+        dropZone.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                updateFileName(e.target.files[0].name);
+            }
+        });
+
+        function updateFileName(name) {
+            fileName.textContent = `Selected file: ${name}`;
+            fileName.classList.remove('hidden');
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const jsonData = jsonInput.value.trim();
+            if (!jsonData) {
+                showError('Please paste product JSON data');
+                return;
+            }
+
+            if (!imageInput.files.length) {
+                showError('Please select an image');
+                return;
+            }
+
+            let productData;
+            try {
+                productData = JSON.parse(jsonData);
+            } catch (error) {
+                showError('Invalid JSON format');
+                return;
+            }
+
+            // Validate product data
+            const errors = validateProductData(productData);
+            if (errors.length > 0) {
+                showValidationErrors(errors);
+                return;
+            }
+
+            // Clear previous errors
+            hideValidationErrors();
+
+            // Start upload
+            setUploading(true);
+            
+            try {
+                const formData = new FormData();
+                
+                // Append all product fields
+                formData.append('name', productData.name);
+                formData.append('description', productData.description);
+                formData.append('price', productData.price);
+                formData.append('category', productData.category);
+                formData.append('author', productData.author);
+                formData.append('language', productData.language);
+                
+                if (productData.originalPrice) formData.append('originalPrice', productData.originalPrice);
+                if (productData.isbn) formData.append('isbn', productData.isbn);
+                
+                // Handle subCategories
+                if (productData.subCategories) {
+                    if (typeof productData.subCategories === 'string') {
+                        formData.append('subCategories', productData.subCategories);
+                    } else {
+                        formData.append('subCategories', JSON.stringify(productData.subCategories));
+                    }
+                }
+                
+                // Append the image file
+                formData.append('image', imageInput.files[0]);
+
+                // Make the API request to your backend
+                const response = await axios.post(`${backendURL}/adminCtrl/add`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+
+                if (response.data.success) {
+                    showSuccess('Product added successfully!');
+                    addToHistory(productData.name, 'success');
+                    resetForm();
+                } else {
+                    throw new Error(response.data.message || 'Failed to add product');
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                let errorMsg = 'Failed to add product';
+                
+                if (error.response) {
+                    // The server responded with an error status
+                    errorMsg = error.response.data?.message || error.response.statusText || errorMsg;
+                } else if (error.request) {
+                    // The request was made but no response was received
+                    errorMsg = 'No response from server. Make sure your backend is running on localhost:4000';
+                } else {
+                    // Something happened in setting up the request
+                    errorMsg = error.message;
+                }
+                
+                showError(errorMsg);
+                addToHistory(productData.name, 'error', errorMsg);
+            } finally {
+                setUploading(false);
+            }
+        });
+
+        function validateProductData(product) {
+            const errors = [];
+
+            // Required fields validation
+            if (!product.name) errors.push('Name is required');
+            if (!product.description) errors.push('Description is required');
+            if (!product.price) errors.push('Price is required');
+            if (!product.category) errors.push('Category is required');
+            if (!product.author) errors.push('Author is required');
+            if (!product.language) errors.push('Language is required');
+
+            // Length validation
+            if (product.name && product.name.length > 255) errors.push('Name too long (max 255 chars)');
+            if (product.description && product.description.length > 1000) errors.push('Description too long (max 1000 chars)');
+
+            // Price validation
+            if (product.price && (isNaN(product.price) || parseFloat(product.price) <= 0)) errors.push('Invalid price');
+            if (product.originalPrice && (isNaN(product.originalPrice) || parseFloat(product.originalPrice) <= 0)) {
+                errors.push('Invalid original price');
+            }
+
+            return errors;
+        }
+
+        function showValidationErrors(errors) {
+            errorList.innerHTML = '';
+            errors.forEach(error => {
+                const li = document.createElement('li');
+                li.textContent = error;
+                errorList.appendChild(li);
+            });
+            validationErrors.classList.remove('hidden');
+            
+            // Also show as toasts
+            errors.forEach(error => showError(error));
+        }
+
+        function hideValidationErrors() {
+            validationErrors.classList.add('hidden');
+        }
+
+        function setUploading(isUploading) {
+            if (isUploading) {
+                submitBtn.disabled = true;
+                btnText.textContent = 'Uploading...';
+                btnSpinner.classList.remove('hidden');
+            } else {
+                submitBtn.disabled = false;
+                btnText.textContent = 'Add Product';
+                btnSpinner.classList.add('hidden');
+            }
+        }
+
+        function resetForm() {
+            jsonInput.value = '';
+            imageInput.value = '';
+            fileName.classList.add('hidden');
+            hideValidationErrors();
+        }
+
+        function showSuccess(message) {
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                className: "toastify-success",
+                stopOnFocus: true
+            }).showToast();
+        }
+
+        function showError(message) {
+            Toastify({
+                text: message,
+                duration: 5000,
+                gravity: "top",
+                position: "right",
+                className: "toastify-error",
+                stopOnFocus: true
+            }).showToast();
+        }
+
+        function addToHistory(productName, status, errorMsg = '') {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            
+            const row = document.createElement('tr');
+            
+            const timeCell = document.createElement('td');
+            timeCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+            timeCell.textContent = timeString;
+            
+            const productCell = document.createElement('td');
+            productCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-900';
+            productCell.textContent = productName;
+            
+            const statusCell = document.createElement('td');
+            statusCell.className = 'px-6 py-4 whitespace-nowrap text-sm';
+            
+            if (status === 'success') {
+                statusCell.innerHTML = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Success</span>';
+            } else {
+                statusCell.innerHTML = `
+                    <div>
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Failed</span>
+                        <div class="text-xs text-red-600 mt-1">${errorMsg.substring(0, 50)}${errorMsg.length > 50 ? '...' : ''}</div>
+                    </div>
+                `;
+            }
+            
+            row.appendChild(timeCell);
+            row.appendChild(productCell);
+            row.appendChild(statusCell);
+            
+            historyBody.prepend(row);
+            
+            // Limit history to 10 items
+            if (historyBody.children.length > 10) {
+                historyBody.removeChild(historyBody.lastChild);
+            }
+        }
+
+        // Initialize with some example JSON
+        jsonInput.value = `{
+  "name": "Book Name",
+  "description": "Book description...",
+  "price": 19.99,
+  "originalPrice": 24.99,
+  "category": "Fiction",
+  "subCategories": ["Novel", "Adventure"],
+  "author": "Author Name",
+  "isbn": "1234567890",
+  "language": "English"
+}`;
+    </script>
+</body>
+</html>
