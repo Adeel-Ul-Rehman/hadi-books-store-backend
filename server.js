@@ -50,6 +50,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running' });
 });
 
+app.get('/', (req, res) => {
+  res.send('Backend is running');
+});
+
 // 404 handler for undefined routes
 app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: 'API endpoint not found' });
