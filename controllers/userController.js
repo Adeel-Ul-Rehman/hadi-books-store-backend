@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import cloudinary from '../config/cloudinary.js';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import transporter from '../config/transporter.js';
 import fs from 'fs/promises';
 
