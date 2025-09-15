@@ -370,12 +370,18 @@ export const login = async (req, res) => {
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
-    res.cookie("token", token, {
+
+    // Dynamic cookie options based on origin for local dev vs production
+    const origin = req.headers.origin || '';
+    const isLocal = origin.includes('localhost');
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production" && !isLocal,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    });
+      sameSite: isLocal ? 'lax' : 'none',
+    };
+
+    res.cookie("token", token, cookieOptions);
 
     return res.status(200).json({
       success: true,
@@ -398,11 +404,16 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    res.clearCookie("token", {
+    // Dynamic cookie options for clearCookie based on origin
+    const origin = req.headers.origin || '';
+    const isLocal = origin.includes('localhost');
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    });
+      secure: process.env.NODE_ENV === "production" && !isLocal,
+      sameSite: isLocal ? 'lax' : 'none',
+    };
+
+    res.clearCookie("token", cookieOptions);
     return res
       .status(200)
       .json({ success: true, message: "Logged out successfully" });
@@ -1140,11 +1151,16 @@ export const deleteAccount = async (req, res) => {
       await tx.user.delete({ where: { id: userId } });
     });
 
-    res.clearCookie("token", {
+    // Dynamic cookie options for clearCookie based on origin
+    const origin = req.headers.origin || '';
+    const isLocal = origin.includes('localhost');
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    });
+      secure: process.env.NODE_ENV === "production" && !isLocal,
+      sameSite: isLocal ? 'lax' : 'none',
+    };
+
+    res.clearCookie("token", cookieOptions);
 
     return res.json({
       success: true,
