@@ -103,14 +103,16 @@ const addToWishlist = async (req, res) => {
 
 const getWishlist = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const paramUserId = req.params.userId;
+    const tokenUserId = req.userId; // From userAuth middleware
 
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'Invalid userId' });
+    // Security: Ensure requested userId matches authenticated user
+    if (paramUserId !== tokenUserId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized access to wishlist' });
     }
 
     const wishlist = await prisma.wishlist.findUnique({
-      where: { userId },
+      where: { userId: tokenUserId }, // Use authenticated userId
       include: {
         items: {
           include: {
@@ -137,7 +139,7 @@ const getWishlist = async (req, res) => {
       message: convertedWishlist ? 'Wishlist retrieved' : 'Wishlist is empty',
       wishlist: {
         id: convertedWishlist?.id || null,
-        userId,
+        userId: tokenUserId,
         items: convertedWishlist?.items.map(item => ({
           id: item.id,
           productId: item.productId,

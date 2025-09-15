@@ -87,14 +87,16 @@ const addToCart = async (req, res) => {
 
 const getCart = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const paramUserId = req.params.userId;
+    const tokenUserId = req.userId; // From userAuth middleware
 
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'Invalid userId' });
+    // Security: Ensure requested userId matches authenticated user
+    if (paramUserId !== tokenUserId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized access to cart' });
     }
 
     const cart = await prisma.cart.findUnique({
-      where: { userId: userId },
+      where: { userId: tokenUserId }, // Use authenticated userId
       include: {
         items: {
           include: {
@@ -121,7 +123,7 @@ const getCart = async (req, res) => {
       message: cart ? 'Cart retrieved' : 'Cart is empty',
       cart: {
         id: convertedCart?.id || null,
-        userId: userId,
+        userId: tokenUserId,
         items: convertedCart?.items.map(item => ({
           id: item.id,
           productId: item.productId,
