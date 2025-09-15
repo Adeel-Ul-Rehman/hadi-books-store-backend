@@ -31,7 +31,6 @@ const addToCart = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found or unavailable' });
     }
 
-    // Find or create cart for the user (using UUID userId directly)
     const cart = await prisma.cart.upsert({
       where: { userId: userId },
       create: { userId: userId },
@@ -96,7 +95,7 @@ const getCart = async (req, res) => {
     }
 
     const cart = await prisma.cart.findUnique({
-      where: { userId: tokenUserId }, // Use authenticated userId
+      where: { userId: tokenUserId },
       include: {
         items: {
           include: {

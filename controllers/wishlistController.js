@@ -20,7 +20,7 @@ const convertBigIntToNumber = (obj) => {
 const addToWishlist = async (req, res) => {
   try {
     const { productId } = req.body;
-    const userId = req.userId; // String UUID from userAuth
+    const userId = req.userId;
 
     if (!productId) {
       return res.status(400).json({ success: false, message: 'Product ID is required' });
@@ -53,7 +53,6 @@ const addToWishlist = async (req, res) => {
       data: { wishlistId: wishlist.id, productId },
     });
 
-    // Fetch updated wishlist
     const updatedWishlist = await prisma.wishlist.findUnique({
       where: { userId },
       include: {
@@ -104,15 +103,14 @@ const addToWishlist = async (req, res) => {
 const getWishlist = async (req, res) => {
   try {
     const paramUserId = req.params.userId;
-    const tokenUserId = req.userId; // From userAuth middleware
+    const tokenUserId = req.userId;
 
-    // Security: Ensure requested userId matches authenticated user
     if (paramUserId !== tokenUserId) {
       return res.status(403).json({ success: false, message: 'Unauthorized access to wishlist' });
     }
 
     const wishlist = await prisma.wishlist.findUnique({
-      where: { userId: tokenUserId }, // Use authenticated userId
+      where: { userId: tokenUserId },
       include: {
         items: {
           include: {
@@ -179,7 +177,6 @@ const removeFromWishlist = async (req, res) => {
       where: { wishlistId_productId: { wishlistId: wishlist.id, productId } },
     });
 
-    // Fetch updated wishlist
     const updatedWishlist = await prisma.wishlist.findUnique({
       where: { userId },
       include: {

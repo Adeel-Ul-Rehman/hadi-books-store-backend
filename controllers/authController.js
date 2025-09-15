@@ -289,96 +289,144 @@ export const login = async (req, res) => {
         .json({ success: false, message: "Invalid credentials" });
     }
 
-    // Sync localCart
+    // Sync localCart with per-item error handling
     let cartSynced = false;
+    let cartSyncErrors = [];
     if (Array.isArray(localCart) && localCart.length > 0) {
-      const cart = await prisma.cart.upsert({
-        where: { userId: user.id },
-        create: { userId: user.id },
-        update: {},
-        include: { items: true },
-      });
-
-      for (const item of localCart) {
-        const { productId, quantity = 1 } = item;
-        if (!productId || isNaN(quantity) || quantity < 1) continue;
-
-        const product = await prisma.product.findUnique({
-          where: { id: productId },
-        });
-        if (!product || !product.availability) continue;
-
-        const existingItem = await prisma.cartItem.findUnique({
-          where: { cartId_productId: { cartId: cart.id, productId } },
+      try {
+        const cart = await prisma.cart.upsert({
+          where: { userId: user.id },
+          create: { userId: user.id },
+          update: {},
+          include: { items: true },
         });
 
-        if (existingItem) {
-          await prisma.cartItem.update({
-            where: { id: existingItem.id },
-            data: { quantity: { increment: parseInt(quantity) } },
-          });
-        } else {
-          await prisma.cartItem.create({
-            data: {
-              cartId: cart.id,
-              productId,
-              quantity: parseInt(quantity),
-            },
-          });
+        let allCartItemsSynced = true;
+        for (const item of localCart) {
+          try {
+            const { productId, quantity = 1 } = item;
+            if (!productId || isNaN(quantity) || quantity < 1) {
+              cartSyncErrors.push(`Invalid productId or quantity for item: ${JSON.stringify(item)}`);
+              allCartItemsSynced = false;
+              continue;
+            }
+
+            const product = await prisma.product.findUnique({
+              where: { id: productId },
+            });
+            if (!product || !product.availability) {
+              cartSyncErrors.push(`Product not found or unavailable: ${productId}`);
+              allCartItemsSynced = false;
+              continue;
+            }
+
+            const existingItem = await prisma.cartItem.findUnique({
+              where: { cartId_productId: { cartId: cart.id, productId } },
+            });
+
+            if (existingItem) {
+              await prisma.cartItem.update({
+                where: { id: existingItem.id },
+                data: { quantity: { increment: parseInt(quantity) } },
+              });
+            } else {
+              await prisma.cartItem.create({
+                data: {
+                  cartId: cart.id,
+                  productId,
+                  quantity: parseInt(quantity),
+                },
+              });
+            }
+          } catch (itemError) {
+            console.error(`Cart sync item error for product ${item.productId}:`, itemError.message);
+            cartSyncErrors.push(`Error syncing cart item ${item.productId}: ${itemError.message}`);
+            allCartItemsSynced = false;
+          }
         }
-        cartSynced = true;
+
+        if (allCartItemsSynced) {
+          cartSynced = true;
+          console.log(`Cart sync successful for user ${user.id}`);
+        } else {
+          console.log(`Partial cart sync failure for user ${user.id}:`, cartSyncErrors);
+        }
+      } catch (syncError) {
+        console.error("Cart sync error:", syncError.message, syncError.stack);
+        cartSyncErrors.push(`Cart sync failed: ${syncError.message}`);
       }
+    } else {
+      cartSynced = true; // No items to sync, consider successful
     }
 
-    // Sync localWishlist
+    // Sync localWishlist with per-item error handling
     let wishlistSynced = false;
+    let wishlistSyncErrors = [];
     if (Array.isArray(localWishlist) && localWishlist.length > 0) {
-      const wishlist = await prisma.wishlist.upsert({
-        where: { userId: user.id },
-        create: { userId: user.id, itemLimit: 10 },
-        update: {},
-        include: { items: true },
-      });
-
-      const remainingSlots = wishlist.itemLimit - wishlist.items.length;
-      for (const productId of localWishlist.slice(0, remainingSlots)) {
-        if (!productId) continue;
-        const product = await prisma.product.findUnique({
-          where: { id: productId },
+      try {
+        const wishlist = await prisma.wishlist.upsert({
+          where: { userId: user.id },
+          create: { userId: user.id, itemLimit: 10 },
+          update: {},
+          include: { items: true },
         });
-        if (!product) continue;
 
-        try {
-          await prisma.wishlistItem.upsert({
-            where: {
-              wishlistId_productId: { wishlistId: wishlist.id, productId },
-            },
-            create: { wishlistId: wishlist.id, productId },
-            update: {},
-          });
-          wishlistSynced = true;
-        } catch (syncError) {
-          console.error(
-            "Wishlist sync error for product:",
-            productId,
-            syncError
-          );
+        let allWishlistItemsSynced = true;
+        const remainingSlots = wishlist.itemLimit - wishlist.items.length;
+        for (const productId of localWishlist.slice(0, remainingSlots)) {
+          try {
+            if (!productId) {
+              wishlistSyncErrors.push(`Invalid productId: ${productId}`);
+              allWishlistItemsSynced = false;
+              continue;
+            }
+            const product = await prisma.product.findUnique({
+              where: { id: productId },
+            });
+            if (!product) {
+              wishlistSyncErrors.push(`Product not found: ${productId}`);
+              allWishlistItemsSynced = false;
+              continue;
+            }
+
+            await prisma.wishlistItem.upsert({
+              where: {
+                wishlistId_productId: { wishlistId: wishlist.id, productId },
+              },
+              create: { wishlistId: wishlist.id, productId },
+              update: {},
+            });
+          } catch (itemError) {
+            console.error(`Wishlist sync item error for product ${productId}:`, itemError.message);
+            wishlistSyncErrors.push(`Error syncing wishlist item ${productId}: ${itemError.message}`);
+            allWishlistItemsSynced = false;
+          }
         }
+
+        if (allWishlistItemsSynced) {
+          wishlistSynced = true;
+          console.log(`Wishlist sync successful for user ${user.id}`);
+        } else {
+          console.log(`Partial wishlist sync failure for user ${user.id}:`, wishlistSyncErrors);
+        }
+      } catch (syncError) {
+        console.error("Wishlist sync error:", syncError.message, syncError.stack);
+        wishlistSyncErrors.push(`Wishlist sync failed: ${syncError.message}`);
       }
+    } else {
+      wishlistSynced = true; // No items to sync, consider successful
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
-    // Dynamic cookie options based on origin for local dev vs production
-    const origin = req.headers.origin || '';
-    const isLocal = origin.includes('localhost');
+    // Cookie options for cross-origin compatibility
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" && !isLocal,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: isLocal ? 'lax' : 'none',
+      secure: process.env.NODE_ENV === "production" && !req.headers.origin.includes('localhost'),
+      sameSite: req.headers.origin.includes('localhost') ? 'none' : 'lax', // Allow cross-origin for localhost
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     };
 
     res.cookie("token", token, cookieOptions);
@@ -395,6 +443,7 @@ export const login = async (req, res) => {
       },
       wishlistSynced,
       cartSynced,
+      syncErrors: [...cartSyncErrors, ...wishlistSyncErrors], // Return errors for debugging
     });
   } catch (error) {
     console.error("Login Error:", error.message, error.stack);
@@ -404,13 +453,10 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    // Dynamic cookie options for clearCookie based on origin
-    const origin = req.headers.origin || '';
-    const isLocal = origin.includes('localhost');
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" && !isLocal,
-      sameSite: isLocal ? 'lax' : 'none',
+      secure: process.env.NODE_ENV === "production" && !req.headers.origin.includes('localhost'),
+      sameSite: req.headers.origin.includes('localhost') ? 'none' : 'lax',
     };
 
     res.clearCookie("token", cookieOptions);
@@ -513,9 +559,7 @@ export const sendResetOtp = async (req, res) => {
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
       <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
         <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
-        <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${
-          user.name
-        } ${user.lastName || ""}</strong>,</p>
+        <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${user.name} ${user.lastName || ""}</strong>,</p>
         <p style="font-size: 16px; line-height: 1.5;">We received a request to reset your password for your Book Store account with email: <strong>${email}</strong>.</p>
         <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
           <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Password Reset OTP</h3>
@@ -528,7 +572,7 @@ export const sendResetOtp = async (req, res) => {
     </div>
   `,
       text: `Book Store - Password Reset
-Dear ${user.name} ${user.lastName || ""},
+Dear ${user.name} ${user.lastName || ""}, 
 We received a request to reset your password for your Book Store account with email: ${email}.
 Password Reset OTP: ${otp}
 This OTP is valid for 10 minutes.
@@ -604,46 +648,32 @@ export const verifyResetOtp = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword, confirmPassword } = req.body;
-    console.log("resetPassword input:", {
-      email,
-      otp,
-      newPassword: "***",
-      confirmPassword: "***",
-    }); // Debug log, hide passwords
 
-    // Validate input fields
     if (!email || !otp || !newPassword || !confirmPassword) {
-      console.log("Missing required fields");
       return res.status(400).json({
         success: false,
         message: "Email, OTP, new password, and confirm password are required",
       });
     }
 
-    // Validate email format
     if (!validator.isEmail(email)) {
-      console.log("Invalid email format:", email);
       return res.status(400).json({
         success: false,
         message: "Invalid email format",
       });
     }
 
-    // Validate OTP format (6-digit number)
     if (!/^\d{6}$/.test(otp)) {
-      console.log("Invalid OTP format:", otp);
       return res.status(400).json({
         success: false,
         message: "OTP must be a 6-digit number",
       });
     }
 
-    // Validate password requirements
     if (
       newPassword.length < 8 ||
       !/^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*]*$/.test(newPassword)
     ) {
-      console.log("Invalid password format");
       return res.status(400).json({
         success: false,
         message:
@@ -651,119 +681,60 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Validate password match
     if (newPassword !== confirmPassword) {
-      console.log("Passwords do not match");
-      return res.status(400).json({
-        success: false,
-        message: "Passwords do not match",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Passwords do not match" });
     }
 
-    // Validate password length
-    if (newPassword.length > 50) {
-      console.log("Password exceeds 50 characters");
-      return res.status(400).json({
-        success: false,
-        message: "Password cannot exceed 50 characters",
-      });
-    }
-
-    // Find user
-    let user;
-    try {
-      user = await prisma.user.findUnique({ where: { email } });
-    } catch (dbError) {
-      console.error("Database error during user lookup:", dbError.message);
-      return res.status(500).json({
-        success: false,
-        message: "Database error while finding user",
-      });
-    }
-
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      console.log("User not found for email:", email);
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
 
-    // Check if account is verified
     if (!user.isAccountVerified) {
-      console.log("User email not verified:", email);
       return res.status(401).json({
         success: false,
         message: "Please verify your email first",
       });
     }
 
-    // Validate OTP
     if (!user.resetOtp || user.resetOtp !== otp) {
-      console.log("Invalid OTP for user:", email);
       return res.status(400).json({
         success: false,
         message: "Invalid OTP",
       });
     }
 
-    // Validate OTP expiration
     if (
       !user.resetOtpExpireAt ||
       user.resetOtpExpireAt < Math.floor(Date.now() / 1000)
     ) {
-      console.log("OTP expired for user:", email);
       return res.status(400).json({
         success: false,
         message: "OTP has expired",
       });
     }
 
-    // Hash new password
-    let hashedPassword;
-    try {
-      hashedPassword = await bcrypt.hash(newPassword, 10);
-    } catch (bcryptError) {
-      console.error(
-        "Bcrypt error during password hashing:",
-        bcryptError.message
-      );
-      return res.status(500).json({
-        success: false,
-        message: "Failed to process password",
-      });
-    }
-
-    // Update user password and clear OTP fields
-    try {
-      console.log("Updating user with data:", {
-        password: "***",
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { email },
+      data: {
+        password: hashedPassword,
         resetOtp: "",
         resetOtpExpireAt: 0,
-      });
-      await prisma.user.update({
-        where: { email },
-        data: {
-          password: hashedPassword,
-          resetOtp: "", // Use empty string instead of null
-          resetOtpExpireAt: 0, // Use 0 instead of null
-        },
-      });
-    } catch (dbError) {
-      console.error("Database error during user update:", dbError.message);
-      return res.status(500).json({
-        success: false,
-        message: "Database error while updating password",
-      });
-    }
+      },
+    });
 
-    console.log("Password reset successful for user:", email);
     return res.json({
       success: true,
       message: "Password reset successfully",
     });
   } catch (error) {
-    console.error("Password reset error:", error.message, error.stack);
+    console.error("Reset Password Error:", error.message, error.stack);
     return res.status(500).json({
       success: false,
       message: "Failed to reset password",
@@ -775,7 +746,6 @@ export const updateProfile = async (req, res) => {
   try {
     const userId = req.userId;
 
-    // Handle multipart/form-data
     const {
       name,
       lastName,
@@ -801,7 +771,6 @@ export const updateProfile = async (req, res) => {
     const updateData = {};
     let hasChanges = false;
 
-    // Basic profile validation - check if values are provided and different from current
     if (
       name !== undefined &&
       name !== null &&
@@ -899,7 +868,6 @@ export const updateProfile = async (req, res) => {
       hasChanges = true;
     }
 
-    // Password change logic
     if (newPassword && newPassword !== "") {
       if (!oldPassword) {
         return res.status(400).json({
@@ -935,18 +903,14 @@ export const updateProfile = async (req, res) => {
       hasChanges = true;
     }
 
-    // Profile picture handling
     if (req.file) {
       try {
-        // Read the uploaded file from disk
         const fileBuffer = fs.readFileSync(req.file.path);
 
-        // Delete old profile picture if exists
         if (user.profilePicture) {
           await cloudinary.uploader.destroy(`user-profiles/profile_${userId}`);
         }
 
-        // Upload new profile picture to Cloudinary
         const uploadResult = await cloudinary.uploader.upload(
           `data:${req.file.mimetype};base64,${fileBuffer.toString("base64")}`,
           {
@@ -964,11 +928,9 @@ export const updateProfile = async (req, res) => {
         updateData.profilePicture = uploadResult.secure_url;
         hasChanges = true;
 
-        // Clean up the temporary file
         fs.unlinkSync(req.file.path);
       } catch (uploadError) {
         console.error("Cloudinary upload error:", uploadError);
-        // Clean up the temporary file even if upload fails
         if (req.file && req.file.path) {
           fs.unlinkSync(req.file.path);
         }
@@ -979,19 +941,10 @@ export const updateProfile = async (req, res) => {
       }
     }
 
-    // Debug log to see what changes were detected
-    console.log("Update data:", updateData);
-    console.log("Has changes:", hasChanges);
-
     if (!hasChanges) {
-      // Clean up the temporary file if no changes
-      if (req.file && req.file.path) {
-        fs.unlinkSync(req.file.path);
-      }
-
       return res.status(400).json({
         success: false,
-        message: "No valid changes provided",
+        message: "No changes provided to update",
       });
     }
 
@@ -1016,18 +969,79 @@ export const updateProfile = async (req, res) => {
 
     return res.json({
       success: true,
+      message: "Profile updated successfully",
       user: updatedUser,
     });
   } catch (error) {
-    // Clean up the temporary file in case of error
+    console.error("Update Profile Error:", error.message, error.stack);
     if (req.file && req.file.path) {
       fs.unlinkSync(req.file.path);
     }
-
-    console.error("Profile update error:", error.message, error.stack);
     return res.status(500).json({
       success: false,
       message: "Failed to update profile",
+    });
+  }
+};
+
+export const deleteAccount = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const userId = req.userId;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.email !== email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email does not match",
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      });
+    }
+
+    if (user.profilePicture) {
+      await cloudinary.uploader.destroy(`user-profiles/profile_${userId}`);
+    }
+
+    await prisma.user.delete({ where: { id: userId } });
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production" && !req.headers.origin.includes('localhost'),
+      sameSite: req.headers.origin.includes('localhost') ? 'none' : 'lax',
+    };
+
+    res.clearCookie("token", cookieOptions);
+
+    return res.json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Account Error:", error.message, error.stack);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete account",
     });
   }
 };
@@ -1051,13 +1065,7 @@ export const removeProfilePicture = async (req, res) => {
       });
     }
 
-    try {
-      // Delete from Cloudinary
-      await cloudinary.uploader.destroy(`user-profiles/profile_${userId}`);
-    } catch (cloudinaryError) {
-      console.error("Cloudinary deletion error:", cloudinaryError);
-      // Continue with database update even if Cloudinary deletion fails
-    }
+    await cloudinary.uploader.destroy(`user-profiles/profile_${userId}`);
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -1084,93 +1092,10 @@ export const removeProfilePicture = async (req, res) => {
       user: updatedUser,
     });
   } catch (error) {
-    console.error("Profile picture removal error:", error.message, error.stack);
+    console.error("Remove Profile Picture Error:", error.message, error.stack);
     return res.status(500).json({
       success: false,
       message: "Failed to remove profile picture",
-    });
-  }
-};
-
-export const deleteAccount = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const userId = req.userId;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        reviews: true,
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    if (user.email !== email) {
-      return res.status(401).json({
-        success: false,
-        message: "Email does not match your account",
-      });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Incorrect password",
-      });
-    }
-
-    // Use transaction to ensure all operations succeed or fail together
-    await prisma.$transaction(async (tx) => {
-      // 1. Delete all reviews by this user first
-      if (user.reviews.length > 0) {
-        await tx.review.deleteMany({
-          where: { userId: userId },
-        });
-      }
-
-      // 2. Delete profile picture from Cloudinary if exists
-      if (user.profilePicture) {
-        await cloudinary.uploader.destroy(`user-profiles/profile_${userId}`);
-      }
-
-      // 3. Delete the user
-      await tx.user.delete({ where: { id: userId } });
-    });
-
-    // Dynamic cookie options for clearCookie based on origin
-    const origin = req.headers.origin || '';
-    const isLocal = origin.includes('localhost');
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production" && !isLocal,
-      sameSite: isLocal ? 'lax' : 'none',
-    };
-
-    res.clearCookie("token", cookieOptions);
-
-    return res.json({
-      success: true,
-      message: "Account deleted successfully",
-    });
-  } catch (error) {
-    console.error("Account deletion error:", error.message, error.stack);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to delete account",
     });
   }
 };
