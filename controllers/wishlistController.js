@@ -77,6 +77,7 @@ const addToWishlist = async (req, res) => {
 
     return res.status(201).json({
       success: true,
+      message: 'Product added to wishlist',
       wishlist: {
         id: convertedWishlist.id,
         userId,
@@ -201,6 +202,7 @@ const removeFromWishlist = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      message: 'Product removed from wishlist',
       wishlist: {
         id: convertedWishlist.id,
         userId,

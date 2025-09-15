@@ -217,6 +217,7 @@ const removeCartItem = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      message: 'Item removed from cart',
     });
   } catch (error) {
     console.error('Remove Cart Item Error:', error);

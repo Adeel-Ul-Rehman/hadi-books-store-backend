@@ -421,11 +421,12 @@ export const login = async (req, res) => {
       expiresIn: "7d",
     });
 
-    // Cookie options for cross-origin compatibility
+    // Cookie options for cross-origin compatibility - FIXED
+    const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" && !req.headers.origin.includes('localhost'),
-      sameSite: req.headers.origin.includes('localhost') ? 'none' : 'lax', // Allow cross-origin for localhost
+      secure: isProduction, // Use secure cookies in production
+      sameSite: isProduction ? 'none' : 'lax', // Allow cross-origin in production
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     };
 
@@ -453,10 +454,11 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
+    const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" && !req.headers.origin.includes('localhost'),
-      sameSite: req.headers.origin.includes('localhost') ? 'none' : 'lax',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
     };
 
     res.clearCookie("token", cookieOptions);

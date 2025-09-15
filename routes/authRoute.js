@@ -21,9 +21,9 @@ const authRouter = express.Router();
 authRouter.post('/register', register);
 authRouter.post('/login', login);
 authRouter.post('/logout', logout);
-authRouter.post('/send-verify-otp', sendVerifyOtp); // Removed userAuth to make public
-authRouter.post('/verify-account', verifyEmail); // Removed userAuth to make public
-authRouter.post('/is-auth', userAuth, isAuthenticated);
+authRouter.post('/send-verify-otp', sendVerifyOtp);
+authRouter.post('/verify-account', verifyEmail);
+authRouter.get('/is-auth', userAuth, isAuthenticated); // Changed from POST to GET
 authRouter.post('/send-reset-otp', sendResetOtp);
 authRouter.post('/verify-reset-otp', verifyResetOtp);
 authRouter.post('/reset-password', resetPassword);

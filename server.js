@@ -18,35 +18,51 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-// Configure CORS for allowed origins
+// Configure CORS for allowed origins - FIXED
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:5173', 'http://localhost:3000'];
 
+// Add your deployed frontend URL to allowed origins
+if (process.env.NODE_ENV === 'production') {
+  allowedOrigins.push('https://your-deployed-frontend-url.vercel.app'); // Replace with your actual frontend URL
+}
+
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
 }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Mount routes
-app.use('/auth', authRoutes);
-app.use('/user', userRoutes);
-app.use('/cart', cartRoutes);
-app.use('/adminCtrl', adminRoutes);
-app.use('/orders', orderRoutes);
-app.use('/products', productRoutes);
-app.use('/reviews', reviewRoutes);
-app.use('/wishlist', wishlistRoutes);
-app.use('/checkout', checkoutRoutes);
-app.use('/hero', heroRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/adminCtrl', adminRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/checkout', checkoutRoutes);
+app.use('/api/hero', heroRoutes);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running' });
 });
 
