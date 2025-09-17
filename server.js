@@ -19,18 +19,25 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
+// ✅ Fixed CORS configuration
 const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
 
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Postman, etc.)
       if (!origin) return callback(null, true);
+
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
+      } else {
+        return callback(new Error('Not allowed by CORS'), false);
       }
-      return callback(new Error('Not allowed by CORS'), false);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Set-Cookie'],
   })
 );
 
@@ -59,12 +66,10 @@ app.get('/', (req, res) => {
   res.send('Backend is running');
 });
 
-// 404
+// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: 'API endpoint not found' });
 });
-
-app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -72,6 +77,22 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-// ❌ DO NOT app.listen() in Vercel
-// ✅ Instead, export the app as default
-export default app;
+// Start server
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, async () => {
+  try {
+    await prisma.$connect();
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log('✅ Connected to Neon PostgreSQL database');
+  } catch (error) {
+    console.error('❌ Database connection error:', error);
+    process.exit(1);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('Shutting down server...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
