@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
-
 import userRoutes from './routes/userRoute.js';
 import adminRoutes from './routes/adminRoute.js';
 import authRoutes from './routes/authRoute.js';
@@ -20,7 +19,7 @@ const app = express();
 const prisma = new PrismaClient();
 
 // ✅ Fixed CORS configuration
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000' , 'https://hadi-books-store-frontend.vercel.app'];
 
 app.use(
   cors({
