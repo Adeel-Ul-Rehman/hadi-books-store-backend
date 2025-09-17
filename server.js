@@ -64,6 +64,8 @@ app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: 'API endpoint not found' });
 });
 
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Global error:', err);
