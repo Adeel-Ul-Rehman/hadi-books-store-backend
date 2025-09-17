@@ -18,18 +18,8 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-// ✅ Updated CORS configuration for Vercel dynamic origins
-const isProduction = process.env.NODE_ENV === 'production';
-
-const allowedOrigins = isProduction 
-  ? [
-      'https://hadi-books-store-frontend.vercel.app',
-      // Allow Vercel preview/staging subdomains (e.g., git branches)
-      /^https:\/\/hadi-books-store-frontend(-.*)?\.vercel\.app$/,
-      // Optionally: Allow all subdomains for flexibility (remove if too broad)
-      // /^https:\/\/.*\.vercel\.app$/,
-    ]
-  : ['http://localhost:5173', 'http://localhost:3000'];
+// ✅ Fixed CORS configuration
+const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000', 'https://hadi-books-store-frontend.vercel.app'];
 
 app.use(
   cors({
@@ -37,23 +27,12 @@ app.use(
       // Allow requests with no origin (mobile apps, curl, Postman, etc.)
       if (!origin) return callback(null, true);
 
-      if (isProduction) {
-        // In production, allow if origin matches the regex or exact Vercel domain
-        const regexMatch = allowedOrigins.slice(1).some(regex => 
-          origin.match(regex)
-        );
-        if (allowedOrigins[0] === origin || regexMatch) {
-          return callback(null, true);
-        }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
       } else {
-        // In dev, allow localhost
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
+        console.log('CORS blocked for origin:', origin);
+        return callback(new Error('Not allowed by CORS'), false);
       }
-
-      console.warn(`CORS blocked origin: ${origin}`); // Log blocked origins for debugging
-      return callback(new Error(`Not allowed by CORS: ${origin}`), false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

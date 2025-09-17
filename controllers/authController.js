@@ -473,11 +473,12 @@ export const logout = async (req, res) => {
 
 export const isAuthenticated = async (req, res) => {
   try {
-    // If no userId (no token), return unauthenticated without DB query
+    // If no userId (not authenticated), return not authenticated
     if (!req.userId) {
-      return res.json({
+      return res.status(200).json({
         success: false,
-        message: 'Not authenticated',
+        message: "Not authenticated",
+        user: null
       });
     }
 
@@ -498,23 +499,27 @@ export const isAuthenticated = async (req, res) => {
         profilePicture: true,
       },
     });
+    
     if (!user) {
-      return res.status(404).json({
+      return res.status(200).json({
         success: false,
         message: "User not found",
+        user: null
       });
     }
+    
     return res.json({
       success: true,
       user,
     });
   } catch (error) {
-    console.error("Auth check error:", error.message, error.stack);
-    return res.status(500).json({
+    console.error("Auth check error:", error.message);
+    return res.status(200).json({
       success: false,
       message: "Authentication check failed",
+      user: null
     });
-  }
+    }
 };
 
 export const sendResetOtp = async (req, res) => {
