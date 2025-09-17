@@ -112,23 +112,9 @@ const getProducts = async (req, res) => {
           category: true,
           subCategories: true,
           author: true,
-          isbn: true,
-          language: true,
           date: true,
           bestseller: true,
           availability: true,
-          reviews: {
-            include: {
-              user: { 
-                select: { 
-                  id: true, 
-                  name: true, 
-                  lastName: true, 
-                  profilePicture: true 
-                } 
-              },
-            },
-          },
         },
       }),
       prisma.product.count({ where: whereClause }),
