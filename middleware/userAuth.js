@@ -4,8 +4,11 @@ const userAuth = async (req, res, next) => {
   try {
     // Prioritize cookie-based token as per backend configuration
     const token = req.cookies.token;
+    
+    // If no token, proceed without auth (for optional checks like is-auth)
     if (!token) {
-      return res.status(401).json({ success: false, message: 'No authentication token provided' });
+      req.userId = null;
+      return next();
     }
 
     // Verify token with JWT_SECRET

@@ -473,6 +473,14 @@ export const logout = async (req, res) => {
 
 export const isAuthenticated = async (req, res) => {
   try {
+    // If no userId (no token), return unauthenticated without DB query
+    if (!req.userId) {
+      return res.json({
+        success: false,
+        message: 'Not authenticated',
+      });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
       select: {
