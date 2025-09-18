@@ -19,7 +19,7 @@ const app = express();
 const prisma = new PrismaClient();
 
 // ✅ Fixed CORS configuration
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000', 'https://hadi-books-store-frontend.vercel.app'];
+const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000', 'https://hadi-books-store-frontend.vercel.app', 'http://localhost:5174'];
 
 app.use(
   cors({
@@ -36,8 +36,8 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['Set-Cookie'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie', 'Set-Cookie'],
+    exposedHeaders: ['Set-Cookie', 'Cookie'],
   })
 );
 
