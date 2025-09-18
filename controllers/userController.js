@@ -181,6 +181,7 @@ const adminLogin = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 3600000, // 1 hour
+      sameSite: 'none'
     });
 
     return res.status(200).json({
@@ -192,7 +193,7 @@ const adminLogin = async (req, res) => {
         email: admin.email,
         profilePicture: admin.profilePicture,
       },
-      token,
+      token, // Also send token in response for frontend to store
     });
   } catch (error) {
     console.error(error);
@@ -442,7 +443,7 @@ const adminLogout = async (req, res) => {
     res.clearCookie('token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      sameSite: 'none'
     });
 
     return res.status(200).json({

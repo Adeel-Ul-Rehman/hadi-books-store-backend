@@ -1,7 +1,12 @@
 import jwt from "jsonwebtoken";
 
 const adminAuth = async (req, res, next) => {
-  const { token } = req.cookies;
+  let token = req.cookies.token;
+
+  // If no cookie token, check Authorization header
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
 
   if (!token) {
     return res.status(401).json({
