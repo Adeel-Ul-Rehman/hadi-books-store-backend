@@ -18,28 +18,36 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-// ✅ Fixed CORS configuration
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000', 'https://hadi-books-store-frontend.vercel.app', 'https://admin-panel-alpha-five.vercel.app'];
+// ✅ Updated CORS configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://hadi-books-store-frontend.vercel.app',
+  'https://admin-panel-alpha-five.vercel.app',
+];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, Postman, etc.)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+      // Allow requests with no origin (e.g., mobile apps, Postman)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
       } else {
         console.log('CORS blocked for origin:', origin);
-        return callback(new Error('Not allowed by CORS'), false);
+        callback(new Error('Not allowed by CORS'), false);
       }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie', 'Set-Cookie'],
-    exposedHeaders: ['Set-Cookie', 'Cookie'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+    exposedHeaders: ['Set-Cookie'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204, // Ensure proper response for preflight requests
   })
 );
+
+// Explicitly handle OPTIONS requests for all routes
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
