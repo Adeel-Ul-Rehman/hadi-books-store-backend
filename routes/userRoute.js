@@ -5,7 +5,7 @@ import adminAuth from '../middleware/adminAuth.js';
 
 const router = express.Router();
 
-router.post('/admin', adminLogin);
+router.post('/login', adminLogin);
 router.get('/me', adminAuth, getAdminProfile);
 router.put('/update/:id', adminAuth, upload.fields([{ name: 'profilePicture', maxCount: 1 }]), updateAdmin);
 router.post('/forgot-password', forgotPassword);
