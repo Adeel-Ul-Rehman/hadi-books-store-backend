@@ -24,7 +24,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://hadi-books-store-frontend.vercel.app',
   'https://admin-panel-alpha-five.vercel.app',
-  'https://www.hadibookstore.shop/'
+  'https://www.hadibookstore.shop'
 ];
 
 app.use(
