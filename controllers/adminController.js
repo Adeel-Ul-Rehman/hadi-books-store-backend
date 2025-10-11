@@ -498,78 +498,101 @@ const updateOrderStatus = async (req, res) => {
     if (estimatedDelivery) updateData.estimatedDelivery = new Date(estimatedDelivery);
     if (paymentStatus) updateData.paymentStatus = paymentStatus;
 
-    // Start a transaction to update both order and payment
-    const updatedOrder = await prisma.$transaction(async (prisma) => {
-      // Update the order
-      const order = await prisma.order.update({
-        where: { id },
-        data: updateData,
-        include: { 
-          items: { 
-            include: { 
-              product: true 
-            } 
-          },
-          user: {
-            select: {
-              id: true,
-              name: true,
-              lastName: true,
-              email: true,
-              mobileNumber: true,
-              profilePicture: true,
+    // Try updating a regular user order first; if not found, try guest order
+    // Start a transaction to update both order/payment
+    try {
+      const updatedOrder = await prisma.$transaction(async (prismaTx) => {
+        // Attempt to find regular order
+        const existing = await prismaTx.order.findUnique({ where: { id } });
+        if (existing) {
+          const order = await prismaTx.order.update({
+            where: { id },
+            data: updateData,
+            include: {
+              items: { include: { product: true } },
+              user: { select: { id: true, name: true, lastName: true, email: true, mobileNumber: true, profilePicture: true } },
+              payment: true,
             },
-          },
-          payment: true,
-        },
+          });
+
+          if (paymentStatus && order.payment) {
+            await prismaTx.payment.update({ where: { orderId: id }, data: { status: paymentStatus === 'paid' ? 'completed' : paymentStatus === 'failed' ? 'failed' : paymentStatus } });
+            order.payment.status = paymentStatus === 'paid' ? 'completed' : paymentStatus === 'failed' ? 'failed' : paymentStatus;
+          }
+
+          return { type: 'user', order };
+        }
+
+        // Not a regular order — check guest orders
+        const existingGuest = await prismaTx.guestOrder.findUnique({ where: { id } });
+        if (existingGuest) {
+          const guestOrder = await prismaTx.guestOrder.update({
+            where: { id },
+            data: updateData,
+            include: { items: { include: { product: true } }, payment: true },
+          });
+
+          if (paymentStatus && guestOrder.payment) {
+            await prismaTx.guestPayment.update({ where: { orderId: id }, data: { status: paymentStatus === 'paid' ? 'completed' : paymentStatus === 'failed' ? 'failed' : paymentStatus } });
+            guestOrder.payment.status = paymentStatus === 'paid' ? 'completed' : paymentStatus === 'failed' ? 'failed' : paymentStatus;
+          }
+
+          return { type: 'guest', guestOrder };
+        }
+
+        throw new Error('Order not found');
       });
 
-      // Update the payment status if provided
-      if (paymentStatus && order.payment) {
-        await prisma.payment.update({
-          where: { orderId: id },
-          data: { 
-            status: paymentStatus === 'paid' ? 'completed' : paymentStatus === 'failed' ? 'failed' : paymentStatus,
-          },
-        });
-        order.payment.status = paymentStatus === 'paid' ? 'completed' : paymentStatus === 'failed' ? 'failed' : paymentStatus;
+      if (updatedOrder.type === 'user') {
+        const o = updatedOrder.order;
+        return res.status(200).json({ success: true, message: 'Order status updated', order: {
+          id: o.id,
+          userId: o.userId,
+          totalPrice: o.totalPrice,
+          status: o.status,
+          paymentStatus: o.paymentStatus,
+          shippingAddress: o.shippingAddress,
+          paymentMethod: o.paymentMethod,
+          shippingMethod: o.shippingMethod,
+          trackingId: o.trackingId,
+          estimatedDelivery: o.estimatedDelivery,
+          taxes: o.taxes,
+          shippingFee: o.shippingFee,
+          createdAt: o.createdAt,
+          user: o.user,
+          payment: o.payment,
+          items: o.items.map(item => ({ id: item.id, productId: item.productId, quantity: item.quantity, price: item.price, product: { id: item.product.id, name: item.product.name, image: item.product.image } })),
+        }});
+      } else {
+        const go = updatedOrder.guestOrder;
+        return res.status(200).json({ success: true, message: 'Guest order status updated', order: {
+          id: go.id,
+          userId: null,
+          isGuest: true,
+          guest: { name: go.guestName, email: go.guestEmail, phone: go.guestPhone, city: go.city || null, postCode: go.postCode || null, country: go.country || null },
+          totalPrice: go.totalPrice,
+          status: go.status,
+          paymentStatus: go.paymentStatus,
+          shippingAddress: go.shippingAddress,
+          city: go.city || null,
+          postCode: go.postCode || null,
+          country: go.country || null,
+          paymentMethod: go.paymentMethod,
+          shippingMethod: go.shippingMethod,
+          trackingId: go.trackingId,
+          estimatedDelivery: go.estimatedDelivery,
+          taxes: go.taxes,
+          shippingFee: go.shippingFee,
+          createdAt: go.createdAt,
+          user: null,
+          payment: go.payment,
+          items: go.items.map(item => ({ id: item.id, productId: item.productId, quantity: item.quantity, price: item.price, product: { id: item.product.id, name: item.product.name, image: item.product.image } })),
+        }});
       }
-
-      return order;
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Order status updated',
-      order: {
-        id: updatedOrder.id,
-        userId: updatedOrder.userId,
-        totalPrice: updatedOrder.totalPrice,
-        status: updatedOrder.status,
-        paymentStatus: updatedOrder.paymentStatus,
-        shippingAddress: updatedOrder.shippingAddress,
-        paymentMethod: updatedOrder.paymentMethod,
-        shippingMethod: updatedOrder.shippingMethod,
-        trackingId: updatedOrder.trackingId,
-        estimatedDelivery: updatedOrder.estimatedDelivery,
-        taxes: updatedOrder.taxes,
-        shippingFee: updatedOrder.shippingFee,
-        createdAt: updatedOrder.createdAt,
-        user: updatedOrder.user,
-        payment: updatedOrder.payment,
-        items: updatedOrder.items.map(item => ({
-          id: item.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          product: {
-            id: item.product.id,
-            name: item.product.name,
-            image: item.product.image,
-          },
-        })),
-      },
-    });
+    } catch (err) {
+      console.error('Update Order Status Error (not found):', err);
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
   } catch (error) {
     console.error('Update Order Status Error:', error);
     return res.status(500).json({ success: false, message: 'Failed to update order status' });
@@ -589,73 +612,79 @@ const getOrders = async (req, res) => {
       whereClause.paymentStatus = paymentStatus;
     }
 
-    const orders = await prisma.order.findMany({
-      where: whereClause,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            lastName: true,
-            email: true,
-            mobileNumber: true,
-            profilePicture: true,
-          },
+      // Fetch regular orders
+      const orders = await prisma.order.findMany({
+        where: whereClause,
+        include: {
+          user: { select: { id: true, name: true, lastName: true, email: true, mobileNumber: true, profilePicture: true } },
+          items: { include: { product: { select: { id: true, name: true, image: true, price: true, originalPrice: true } } } },
+          payment: true,
         },
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-                price: true,
-                originalPrice: true,
-              },
-            },
-          },
-        },
-        payment: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+      });
 
-    const message = orders.length === 0 ? 'No orders available yet' : 'Orders retrieved';
+      // Fetch guest orders (apply same filters where possible)
+      const guestWhere = {};
+      if (status) guestWhere.status = status;
+      if (paymentStatus) guestWhere.paymentStatus = paymentStatus;
 
-    return res.status(200).json({
-      success: true,
-      message,
-      orders: orders.map(order => ({
-        id: order.id,
-        userId: order.userId,
-        totalPrice: order.totalPrice,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        shippingAddress: order.shippingAddress,
-        paymentMethod: order.paymentMethod,
-        shippingMethod: order.shippingMethod,
-        trackingId: order.trackingId,
-        estimatedDelivery: order.estimatedDelivery,
-        taxes: order.taxes,
-        shippingFee: order.shippingFee,
-        createdAt: order.createdAt,
-        user: order.user,
-        payment: order.payment,
-        items: order.items.map(item => ({
-          id: item.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          product: {
-            id: item.product.id,
-            name: item.product.name,
-            image: item.product.image,
-            price: item.product.price,
-            originalPrice: item.product.originalPrice,
-          },
-        })),
-      })),
-    });
+      const guestOrders = await prisma.guestOrder.findMany({
+        where: guestWhere,
+        include: { items: { include: { product: true } }, payment: true },
+      });
+
+      // Normalize both lists into a single array with an isGuest flag
+      const normalizedUserOrders = orders.map(o => ({
+        id: o.id,
+        userId: o.userId,
+        isGuest: false,
+        totalPrice: o.totalPrice,
+        status: o.status,
+        paymentStatus: o.paymentStatus,
+        shippingAddress: o.shippingAddress,
+        paymentMethod: o.paymentMethod,
+        shippingMethod: o.shippingMethod,
+        trackingId: o.trackingId,
+        estimatedDelivery: o.estimatedDelivery,
+        taxes: o.taxes,
+        shippingFee: o.shippingFee,
+        createdAt: o.createdAt,
+        user: o.user,
+        guest: null,
+        payment: o.payment,
+        items: o.items.map(item => ({ id: item.id, productId: item.productId, quantity: item.quantity, price: item.price, product: { id: item.product.id, name: item.product.name, image: item.product.image, price: item.product.price, originalPrice: item.product.originalPrice } })),
+      }));
+
+      const normalizedGuestOrders = guestOrders.map(go => ({
+        id: go.id,
+        userId: null,
+        isGuest: true,
+        guest: { name: go.guestName, email: go.guestEmail, phone: go.guestPhone, city: go.city || null, postCode: go.postCode || null, country: go.country || null },
+        totalPrice: go.totalPrice,
+        status: go.status,
+        paymentStatus: go.paymentStatus,
+        shippingAddress: go.shippingAddress,
+        city: go.city || null,
+        postCode: go.postCode || null,
+        country: go.country || null,
+        paymentMethod: go.paymentMethod,
+        shippingMethod: go.shippingMethod,
+        trackingId: go.trackingId,
+        estimatedDelivery: go.estimatedDelivery,
+        taxes: go.taxes,
+        shippingFee: go.shippingFee,
+        createdAt: go.createdAt,
+        user: null,
+        payment: go.payment,
+        items: go.items.map(item => ({ id: item.id, productId: item.productId, quantity: item.quantity, price: item.price, product: { id: item.product.id, name: item.product.name, image: item.product.image, price: item.product.price, originalPrice: item.product.originalPrice } })),
+      }));
+
+      const combined = [...normalizedUserOrders, ...normalizedGuestOrders];
+      // Sort by createdAt desc
+      combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      const message = combined.length === 0 ? 'No orders available yet' : 'Orders retrieved';
+
+      return res.status(200).json({ success: true, message, orders: combined });
   } catch (error) {
     console.error('Get Orders Error:', error);
     return res.status(500).json({ success: false, message: 'Failed to retrieve orders' });

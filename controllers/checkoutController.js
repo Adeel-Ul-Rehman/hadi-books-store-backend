@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import validator from 'validator';
 import upload, { cleanupTempFiles } from '../middleware/multer.js';
 import cloudinary from '../config/cloudinary.js';
+import transporter from '../config/transporter.js';
 
 const prisma = new PrismaClient();
 
@@ -182,6 +183,98 @@ const processCheckout = async (req, res) => {
       return orderData;
     });
 
+    // Prepare and send confirmation emails to logged-in user and admin (mirror guest order behavior)
+    try {
+      // Fetch user info for email
+      const userRecord = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, mobileNumber: true } });
+
+      const itemDetails = order.items
+        .map(item => `Product: ${item.product.name}, Quantity: ${item.quantity}, Price: PKR ${item.price.toFixed(2)}`)
+        .join('\n');
+
+      const calculatedSubtotal = subtotal; // from earlier calculation
+
+      const emailContentUser = `
+Thank you for your order!
+
+Order ID: ${order.id}
+Name: ${userRecord?.name || 'Customer'}
+Email: ${userRecord?.email || 'Not provided'}
+Shipping Address: ${order.shippingAddress}
+City: ${order.city || 'Not provided'}
+Postal Code: ${order.postCode || 'Not provided'}
+Country: ${order.country || 'Not provided'}
+
+Order Details:
+${itemDetails}
+
+Total:
+  Subtotal: PKR ${calculatedSubtotal.toFixed(2)}
+  Taxes: PKR ${order.taxes.toFixed(2)}
+  Shipping Fee: PKR ${order.shippingFee.toFixed(2)}
+  Total: PKR ${order.totalPrice.toFixed(2)}
+
+Payment Method: ${order.paymentMethod || 'Not specified'}
+
+We will contact you via this email or on your contact number ${mobileNumber || userRecord?.mobileNumber || 'Not provided'} regarding your order status.
+`;
+
+      const emailContentAdmin = `
+New Order Placed - Order ID: ${order.id}
+
+Customer Details:
+  Name: ${userRecord?.name || 'Customer'}
+  Email: ${userRecord?.email || 'Not provided'}
+  Phone: ${mobileNumber || userRecord?.mobileNumber || 'Not provided'}
+  Shipping Address: ${order.shippingAddress}
+  City: ${order.city || 'Not provided'}
+  Postal Code: ${order.postCode || 'Not provided'}
+  Country: ${order.country || 'Not provided'}
+
+Order Details:
+${itemDetails}
+
+Total Bill:
+  Subtotal: PKR ${calculatedSubtotal.toFixed(2)}
+  Taxes: PKR ${order.taxes.toFixed(2)}
+  Shipping Fee: PKR ${order.shippingFee.toFixed(2)}
+  Total: PKR ${order.totalPrice.toFixed(2)}
+
+Payment Method: ${order.paymentMethod || 'Not specified'}
+Order Date: ${order.createdAt.toISOString()}
+`;
+
+      // Send email to user
+      if (userRecord?.email) {
+        try {
+          await transporter.sendMail({
+            from: `"Hadi Books Store" <${process.env.SMTP_USER}>`,
+            to: userRecord.email,
+            subject: `Order Confirmation - ${order.id}`,
+            text: emailContentUser,
+          });
+          console.log('Order confirmation email sent to:', userRecord.email);
+        } catch (emailErr) {
+          console.error('Failed to send order confirmation email to user:', emailErr);
+        }
+      }
+
+      // Send email to admin
+      try {
+        await transporter.sendMail({
+          from: `"Hadi Books Store" <${process.env.SMTP_USER}>`,
+          to: process.env.SENDER_EMAIL,
+          subject: `New Order - ${order.id}`,
+          text: emailContentAdmin,
+        });
+        console.log('Admin notification email sent for order:', order.id);
+      } catch (emailErr) {
+        console.error('Failed to send admin notification for order:', emailErr);
+      }
+    } catch (err) {
+      console.error('Error preparing/sending order emails for logged-in user:', err);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Checkout processed and order placed successfully',
@@ -283,4 +376,59 @@ const uploadPaymentProof = async (req, res) => {
   }
 };
 
-export { calculateCheckout, processCheckout, uploadPaymentProof, upload };
+const uploadGuestPaymentProof = async (req, res) => {
+  try {
+    const { orderId, guestEmail } = req.body;
+    const file = req.files?.proof?.[0];
+
+    if (!orderId || !guestEmail || !file) {
+      if (file) await cleanupTempFiles(file.path);
+      return res.status(400).json({ success: false, message: 'Order ID, guest email and proof file are required' });
+    }
+
+    const guestOrder = await prisma.guestOrder.findUnique({
+      where: { id: orderId },
+      select: { guestEmail: true, payment: true, totalPrice: true },
+    });
+
+    if (!guestOrder || guestOrder.guestEmail !== guestEmail) {
+      if (file) await cleanupTempFiles(file.path);
+      return res.status(403).json({ success: false, message: 'Unauthorized access or guest order not found' });
+    }
+
+    if (!guestOrder.payment) {
+      if (file) await cleanupTempFiles(file.path);
+      return res.status(400).json({ success: false, message: 'No payment associated with this guest order' });
+    }
+
+    if (guestOrder.payment.status !== 'pending') {
+      if (file) await cleanupTempFiles(file.path);
+      return res.status(400).json({ success: false, message: 'Payment is not in pending status' });
+    }
+
+    // Upload to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(file.path, {
+      folder: 'hadi_books_store/guest_payment_proofs',
+      public_id: `guest_proof_${orderId}_${Date.now()}`,
+    });
+    await cleanupTempFiles(file.path);
+
+    const proofUrl = uploadResult.secure_url;
+
+    await prisma.guestPayment.update({
+      where: { id: guestOrder.payment.id },
+      data: { paymentProof: proofUrl },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment proof uploaded successfully. Our team will verify it soon. You will be notified once your payment is verified and your order is confirmed.',
+    });
+  } catch (error) {
+    if (req.files?.proof?.[0]) await cleanupTempFiles(req.files.proof[0].path);
+    console.error('Upload Guest Payment Proof Error:', error.message, error.stack);
+    return res.status(500).json({ success: false, message: 'Failed to upload guest payment proof' });
+  }
+};
+
+export { calculateCheckout, processCheckout, uploadPaymentProof, uploadGuestPaymentProof, upload };

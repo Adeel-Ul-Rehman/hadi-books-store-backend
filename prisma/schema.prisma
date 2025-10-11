@@ -12,7 +12,7 @@ model User {
   name               String     @db.VarChar(20)
   lastName           String?    @db.VarChar(20)
   email              String     @unique
-  password           String
+  password           String?    // Changed from required to optional
   address            String?
   postCode           String?
   city               String?
@@ -26,12 +26,19 @@ model User {
   resetOtpExpireAt   Int        @default(0)
   account_created_at DateTime   @default(now())
   profilePicture     String?
+  
+  // NEW FIELDS FOR GOOGLE AUTH
+  authProvider       String?    @default("email") // 'email', 'google'
+  googleId           String?    @unique
+  emailVerified      Boolean    @default(false)   // For Google users
+  
   cart               Cart?
   orders             Order[]
   reviews            Review[]
   wishlist           Wishlist?
 
   @@index([email])
+  @@index([googleId])
   @@map("users")
 }
 
@@ -68,6 +75,7 @@ model Product {
   orderItems    OrderItem[]
   reviews       Review[]
   wishlistItems WishlistItem[]
+  guestOrderItems GuestOrderItem[]
 
   @@index([category])
   @@index([author])
@@ -205,4 +213,63 @@ model HeroImage {
   isActive  Boolean  @default(true) @map("is_active")
   
   @@map("hero_images")
+}
+
+model GuestOrder {
+  id                   String     @id @default(uuid())
+  guestEmail           String     // Email for order confirmation
+  guestName            String     // Guest's name
+  guestPhone           String?    // Guest's phone number
+  shippingAddress      String     // Required for guest orders
+  city                 String?    // Optional city for guest orders
+  postCode             String?    // Optional postal code for guest orders
+  country              String?    // Optional country for guest orders
+  totalPrice           Float
+  status               String     @default("pending")
+  paymentStatus        String     @default("not_paid")
+  paymentMethod        String?
+  shippingMethod       String?
+  trackingId           String?
+  estimatedDelivery    DateTime?
+  taxes                Float      @default(0)
+  shippingFee          Float      @default(0)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  items                GuestOrderItem[]
+  payment              GuestPayment?
+
+  @@index([guestEmail])
+  @@map("guest_orders")
+}
+
+model GuestOrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   String   @map("order_id")
+  productId String   @map("product_id")
+  quantity  Int      @default(1)
+  price     Float
+  createdAt DateTime @default(now())
+  order     GuestOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, productId])
+  @@map("guest_order_items")
+}
+
+model GuestPayment {
+  id               String     @id @default(uuid())
+  orderId          String     @unique @map("order_id")
+  paymentMethod    String
+  transactionId    String?
+  status           String     @default("pending")
+  amount           Float
+  bankAccount      String?
+  bankName         String?
+  paymentProof     String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  order            GuestOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("guest_payments")
 }

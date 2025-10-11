@@ -96,34 +96,44 @@ export const register = async (req, res) => {
       message = "Registration successful. OTP sent to your email.";
     }
 
-    // Send email
-    const mailOptions = {
-      from: process.env.SENDER_EMAIL,
-      to: email,
-      subject: `Account Verification OTP`,
-      html: `
-    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-      <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
-        <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
-        <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
-        <p style="font-size: 16px; line-height: 1.5;">Please use the following OTP to verify your Book Store account:</p>
-        <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
-          <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Verification OTP</h3>
-          <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
-          <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 24 hours</p>
+    // Send email with enhanced error handling
+    try {
+      const mailOptions = {
+        from: process.env.SENDER_EMAIL,
+        to: email,
+        subject: `Account Verification OTP`,
+        html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
+          <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
+          <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
+          <p style="font-size: 16px; line-height: 1.5;">Please use the following OTP to verify your Book Store account:</p>
+          <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
+            <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Verification OTP</h3>
+            <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
+            <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 24 hours</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.5;">Enter this OTP in the app to complete your account verification.</p>
+          <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
         </div>
-        <p style="font-size: 16px; line-height: 1.5;">Enter this OTP in the app to complete your account verification.</p>
-        <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
       </div>
-    </div>
-  `,
-      text: `Your OTP for Book Store account verification is ${otp}. Valid for 24 hours.`,
-    };
+    `,
+        text: `Your OTP for Book Store account verification is ${otp}. Valid for 24 hours.`,
+      };
 
-    await transporter.sendMail(mailOptions);
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ OTP email sent successfully to ${email}: ${otp}`);
+    } catch (emailError) {
+      console.error('❌ Failed to send OTP email:', emailError.message);
+      console.error('Email error details:', emailError);
+      // Don't fail the registration if email fails, but log it
+      console.log(`📝 OTP for ${email} (not sent via email): ${otp}`);
+      // Still return success but with a warning about email
+      message += " However, email delivery failed. Please try resending OTP.";
+    }
 
     // For debugging: Log the OTP (remove in production)
-    console.log(`OTP sent to ${email}: ${otp}`);
+    console.log(`OTP generated for ${email}: ${otp}`);
 
     return res.status(201).json({
       success: true,
@@ -173,38 +183,49 @@ export const sendVerifyOtp = async (req, res) => {
       },
     });
 
-    const mailOptions = {
-      from: process.env.SENDER_EMAIL,
-      to: user.email,
-      subject: `Account Verification OTP`,
-      html: `
-    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-      <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
-        <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
-        <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${user.name}</strong>,</p>
-        <p style="font-size: 16px; line-height: 1.5;">Please use the following OTP to verify your Book Store account:</p>
-        <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
-          <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Verification OTP</h3>
-          <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
-          <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 24 hours</p>
+    // Send email with enhanced error handling
+    try {
+      const mailOptions = {
+        from: process.env.SENDER_EMAIL,
+        to: user.email,
+        subject: `Account Verification OTP`,
+        html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
+          <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
+          <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${user.name}</strong>,</p>
+          <p style="font-size: 16px; line-height: 1.5;">Please use the following OTP to verify your Book Store account:</p>
+          <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
+            <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Verification OTP</h3>
+            <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
+            <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 24 hours</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.5;">Enter this OTP in the app to complete your account verification.</p>
+          <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
         </div>
-        <p style="font-size: 16px; line-height: 1.5;">Enter this OTP in the app to complete your account verification.</p>
-        <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
       </div>
-    </div>
-  `,
-      text: `Your OTP for Book Store account verification is ${otp}. Valid for 24 hours.`,
-    };
+    `,
+        text: `Your OTP for Book Store account verification is ${otp}. Valid for 24 hours.`,
+      };
 
-    await transporter.sendMail(mailOptions);
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Resend OTP email sent successfully to ${user.email}: ${otp}`);
 
-    // For debugging: Log the OTP (remove in production)
-    console.log(`Resend OTP sent to ${user.email}: ${otp}`);
+      // For debugging: Log the OTP (remove in production)
+      console.log(`Resend OTP generated for ${user.email}: ${otp}`);
 
-    return res.json({
-      success: true,
-      message: "Verification OTP sent to email",
-    });
+      return res.json({
+        success: true,
+        message: "Verification OTP sent to email",
+      });
+    } catch (emailError) {
+      console.error('❌ Failed to resend OTP email:', emailError.message);
+      console.error('Email error details:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email. Please try again.",
+      });
+    }
   } catch (error) {
     console.error("OTP send error:", error.message, error.stack);
     return res.status(500).json({
@@ -265,6 +286,166 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
+export const syncCartAndWishlist = async (userId, localCart, localWishlist) => {
+  // Sync localCart with per-item error handling
+  let cartSynced = false;
+  let cartSyncErrors = [];
+  if (Array.isArray(localCart) && localCart.length > 0) {
+    try {
+      const cart = await prisma.cart.upsert({
+        where: { userId: userId },
+        create: { userId: userId },
+        update: {},
+        include: { items: true },
+      });
+
+      let allCartItemsSynced = true;
+      for (const item of localCart) {
+        try {
+          const { productId, quantity = 1 } = item;
+          if (!productId || isNaN(quantity) || quantity < 1) {
+            cartSyncErrors.push(`Invalid productId or quantity for item: ${JSON.stringify(item)}`);
+            allCartItemsSynced = false;
+            continue;
+          }
+
+          const product = await prisma.product.findUnique({
+            where: { id: productId },
+          });
+          if (!product || !product.availability) {
+            cartSyncErrors.push(`Product not found or unavailable: ${productId}`);
+            allCartItemsSynced = false;
+            continue;
+          }
+
+          const existingItem = await prisma.cartItem.findUnique({
+            where: { cartId_productId: { cartId: cart.id, productId } },
+          });
+
+          if (existingItem) {
+            await prisma.cartItem.update({
+              where: { id: existingItem.id },
+              data: { quantity: { increment: parseInt(quantity) } },
+            });
+          } else {
+            await prisma.cartItem.create({
+              data: {
+                cartId: cart.id,
+                productId,
+                quantity: parseInt(quantity),
+              },
+            });
+          }
+        } catch (itemError) {
+          console.error(`Cart sync item error for product ${item.productId}:`, itemError.message);
+          cartSyncErrors.push(`Error syncing cart item ${item.productId}: ${itemError.message}`);
+          allCartItemsSynced = false;
+        }
+      }
+
+      if (allCartItemsSynced) {
+        cartSynced = true;
+        console.log(`Cart sync successful for user ${userId}`);
+      } else {
+        console.log(`Partial cart sync failure for user ${userId}:`, cartSyncErrors);
+      }
+    } catch (syncError) {
+      console.error("Cart sync error:", syncError.message, syncError.stack);
+      cartSyncErrors.push(`Cart sync failed: ${syncError.message}`);
+    }
+  } else {
+    cartSynced = true; // No items to sync, consider successful
+  }
+
+  // Sync localWishlist with per-item error handling
+  let wishlistSynced = false;
+  let wishlistSyncErrors = [];
+  if (Array.isArray(localWishlist) && localWishlist.length > 0) {
+    try {
+      const wishlist = await prisma.wishlist.upsert({
+        where: { userId: userId },
+        create: { userId: userId, itemLimit: 10 },
+        update: {},
+        include: { items: true },
+      });
+
+      let allWishlistItemsSynced = true;
+      const remainingSlots = wishlist.itemLimit - wishlist.items.length;
+      for (const productId of localWishlist.slice(0, remainingSlots)) {
+        try {
+          if (!productId) {
+            wishlistSyncErrors.push(`Invalid productId: ${productId}`);
+            allWishlistItemsSynced = false;
+            continue;
+          }
+          const product = await prisma.product.findUnique({
+            where: { id: productId },
+          });
+          if (!product) {
+            wishlistSyncErrors.push(`Product not found: ${productId}`);
+            allWishlistItemsSynced = false;
+            continue;
+          }
+
+          await prisma.wishlistItem.upsert({
+            where: {
+              wishlistId_productId: { wishlistId: wishlist.id, productId },
+            },
+            create: { wishlistId: wishlist.id, productId },
+            update: {},
+          });
+        } catch (itemError) {
+          console.error(`Wishlist sync item error for product ${productId}:`, itemError.message);
+          wishlistSyncErrors.push(`Error syncing wishlist item ${productId}: ${itemError.message}`);
+          allWishlistItemsSynced = false;
+        }
+      }
+
+      if (allWishlistItemsSynced) {
+        wishlistSynced = true;
+        console.log(`Wishlist sync successful for user ${userId}`);
+      } else {
+        console.log(`Partial wishlist sync failure for user ${userId}:`, wishlistSyncErrors);
+      }
+    } catch (syncError) {
+      console.error("Wishlist sync error:", syncError.message, syncError.stack);
+      wishlistSyncErrors.push(`Wishlist sync failed: ${syncError.message}`);
+    }
+  } else {
+    wishlistSynced = true; // No items to sync, consider successful
+  }
+
+  return {
+    wishlistSynced,
+    cartSynced,
+    syncErrors: [...cartSyncErrors, ...wishlistSyncErrors]
+  };
+};
+
+export const syncAfterGoogleLogin = async (req, res) => {
+  try {
+    const { localCart = [], localWishlist = [] } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authenticated" });
+    }
+
+    const syncResult = await syncCartAndWishlist(userId, localCart, localWishlist);
+
+    return res.status(200).json({
+      success: true,
+      message: "Sync successful after Google login",
+      wishlistSynced: syncResult.wishlistSynced,
+      cartSynced: syncResult.cartSynced,
+      syncErrors: syncResult.syncErrors,
+    });
+  } catch (error) {
+    console.error("Sync After Google Login Error:", error.message, error.stack);
+    return res.status(500).json({ success: false, message: "Sync failed after Google login" });
+  }
+};
+
 export const login = async (req, res) => {
   try {
     const { email, password, localCart = [], localWishlist = [] } = req.body;
@@ -289,133 +470,7 @@ export const login = async (req, res) => {
         .json({ success: false, message: "Invalid credentials" });
     }
 
-    // Sync localCart with per-item error handling
-    let cartSynced = false;
-    let cartSyncErrors = [];
-    if (Array.isArray(localCart) && localCart.length > 0) {
-      try {
-        const cart = await prisma.cart.upsert({
-          where: { userId: user.id },
-          create: { userId: user.id },
-          update: {},
-          include: { items: true },
-        });
-
-        let allCartItemsSynced = true;
-        for (const item of localCart) {
-          try {
-            const { productId, quantity = 1 } = item;
-            if (!productId || isNaN(quantity) || quantity < 1) {
-              cartSyncErrors.push(`Invalid productId or quantity for item: ${JSON.stringify(item)}`);
-              allCartItemsSynced = false;
-              continue;
-            }
-
-            const product = await prisma.product.findUnique({
-              where: { id: productId },
-            });
-            if (!product || !product.availability) {
-              cartSyncErrors.push(`Product not found or unavailable: ${productId}`);
-              allCartItemsSynced = false;
-              continue;
-            }
-
-            const existingItem = await prisma.cartItem.findUnique({
-              where: { cartId_productId: { cartId: cart.id, productId } },
-            });
-
-            if (existingItem) {
-              await prisma.cartItem.update({
-                where: { id: existingItem.id },
-                data: { quantity: { increment: parseInt(quantity) } },
-              });
-            } else {
-              await prisma.cartItem.create({
-                data: {
-                  cartId: cart.id,
-                  productId,
-                  quantity: parseInt(quantity),
-                },
-              });
-            }
-          } catch (itemError) {
-            console.error(`Cart sync item error for product ${item.productId}:`, itemError.message);
-            cartSyncErrors.push(`Error syncing cart item ${item.productId}: ${itemError.message}`);
-            allCartItemsSynced = false;
-          }
-        }
-
-        if (allCartItemsSynced) {
-          cartSynced = true;
-          console.log(`Cart sync successful for user ${user.id}`);
-        } else {
-          console.log(`Partial cart sync failure for user ${user.id}:`, cartSyncErrors);
-        }
-      } catch (syncError) {
-        console.error("Cart sync error:", syncError.message, syncError.stack);
-        cartSyncErrors.push(`Cart sync failed: ${syncError.message}`);
-      }
-    } else {
-      cartSynced = true; // No items to sync, consider successful
-    }
-
-    // Sync localWishlist with per-item error handling
-    let wishlistSynced = false;
-    let wishlistSyncErrors = [];
-    if (Array.isArray(localWishlist) && localWishlist.length > 0) {
-      try {
-        const wishlist = await prisma.wishlist.upsert({
-          where: { userId: user.id },
-          create: { userId: user.id, itemLimit: 10 },
-          update: {},
-          include: { items: true },
-        });
-
-        let allWishlistItemsSynced = true;
-        const remainingSlots = wishlist.itemLimit - wishlist.items.length;
-        for (const productId of localWishlist.slice(0, remainingSlots)) {
-          try {
-            if (!productId) {
-              wishlistSyncErrors.push(`Invalid productId: ${productId}`);
-              allWishlistItemsSynced = false;
-              continue;
-            }
-            const product = await prisma.product.findUnique({
-              where: { id: productId },
-            });
-            if (!product) {
-              wishlistSyncErrors.push(`Product not found: ${productId}`);
-              allWishlistItemsSynced = false;
-              continue;
-            }
-
-            await prisma.wishlistItem.upsert({
-              where: {
-                wishlistId_productId: { wishlistId: wishlist.id, productId },
-              },
-              create: { wishlistId: wishlist.id, productId },
-              update: {},
-            });
-          } catch (itemError) {
-            console.error(`Wishlist sync item error for product ${productId}:`, itemError.message);
-            wishlistSyncErrors.push(`Error syncing wishlist item ${productId}: ${itemError.message}`);
-            allWishlistItemsSynced = false;
-          }
-        }
-
-        if (allWishlistItemsSynced) {
-          wishlistSynced = true;
-          console.log(`Wishlist sync successful for user ${user.id}`);
-        } else {
-          console.log(`Partial wishlist sync failure for user ${user.id}:`, wishlistSyncErrors);
-        }
-      } catch (syncError) {
-        console.error("Wishlist sync error:", syncError.message, syncError.stack);
-        wishlistSyncErrors.push(`Wishlist sync failed: ${syncError.message}`);
-      }
-    } else {
-      wishlistSynced = true; // No items to sync, consider successful
-    }
+    const syncResult = await syncCartAndWishlist(user.id, localCart, localWishlist);
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
@@ -442,13 +497,37 @@ export const login = async (req, res) => {
         email: user.email,
         isAccountVerified: user.isAccountVerified,
       },
-      wishlistSynced,
-      cartSynced,
-      syncErrors: [...cartSyncErrors, ...wishlistSyncErrors], // Return errors for debugging
+      wishlistSynced: syncResult.wishlistSynced,
+      cartSynced: syncResult.cartSynced,
+      syncErrors: syncResult.syncErrors, // Return errors for debugging
     });
   } catch (error) {
     console.error("Login Error:", error.message, error.stack);
     return res.status(500).json({ success: false, message: "Login failed" });
+  }
+};
+
+export const syncAfterLogin = async (req, res) => {
+  try {
+    const { localCart = [], localWishlist = [] } = req.body;
+    const userId = req.userId; // From userAuth middleware
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authenticated" });
+    }
+
+    const syncResult = await syncCartAndWishlist(userId, localCart, localWishlist);
+
+    return res.status(200).json({
+      success: true,
+      message: "Sync successful",
+      wishlistSynced: syncResult.wishlistSynced,
+      cartSynced: syncResult.cartSynced,
+      syncErrors: syncResult.syncErrors,
+    });
+  } catch (error) {
+    console.error("Sync After Login Error:", error.message, error.stack);
+    return res.status(500).json({ success: false, message: "Sync failed" });
   }
 };
 
@@ -566,27 +645,29 @@ export const sendResetOtp = async (req, res) => {
       });
     }
 
-    const mailOptions = {
-      from: process.env.SENDER_EMAIL,
-      to: email,
-      subject: `🔐 Book Store Password Reset Verification`,
-      html: `
-    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-      <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
-        <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
-        <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${user.name} ${user.lastName || ""}</strong>,</p>
-        <p style="font-size: 16px; line-height: 1.5;">We received a request to reset your password for your Book Store account with email: <strong>${email}</strong>.</p>
-        <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
-          <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Password Reset OTP</h3>
-          <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
-          <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 10 minutes</p>
+    // Send email with enhanced error handling
+    try {
+      const mailOptions = {
+        from: process.env.SENDER_EMAIL,
+        to: email,
+        subject: `🔐 Book Store Password Reset Verification`,
+        html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
+          <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
+          <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${user.name} ${user.lastName || ""}</strong>,</p>
+          <p style="font-size: 16px; line-height: 1.5;">We received a request to reset your password for your Book Store account with email: <strong>${email}</strong>.</p>
+          <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
+            <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Password Reset OTP</h3>
+            <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
+            <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 10 minutes</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.5;">Please enter this OTP in the app to proceed with resetting your password.</p>
+          <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
         </div>
-        <p style="font-size: 16px; line-height: 1.5;">Please enter this OTP in the app to proceed with resetting your password.</p>
-        <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
       </div>
-    </div>
-  `,
-      text: `Book Store - Password Reset
+    `,
+        text: `Book Store - Password Reset
 Dear ${user.name} ${user.lastName || ""}, 
 We received a request to reset your password for your Book Store account with email: ${email}.
 Password Reset OTP: ${otp}
@@ -594,14 +675,23 @@ This OTP is valid for 10 minutes.
 Please enter this OTP in the app to proceed with resetting your password.
 Best regards,
 The Book Store Team`,
-    };
+      };
 
-    await transporter.sendMail(mailOptions);
-
-    return res.json({
-      success: true,
-      message: "Password reset OTP sent to email",
-    });
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Password reset OTP email sent successfully to ${email}: ${otp}`);
+      
+      return res.json({
+        success: true,
+        message: "Password reset OTP sent to email",
+      });
+    } catch (emailError) {
+      console.error('❌ Failed to send password reset OTP email:', emailError.message);
+      console.error('Email error details:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send reset OTP email. Please try again.",
+      });
+    }
   } catch (error) {
     console.error("Reset OTP error:", error.message, error.stack);
     return res.status(500).json({
