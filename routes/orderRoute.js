@@ -5,10 +5,11 @@ import userAuth from '../middleware/userAuth.js';
 
 const router = express.Router();
 
+// User orders (require authentication)
 router.post('/create', userAuth, createOrder);
 router.get('/get', userAuth, getUserOrders);
 
-// Guest order endpoint (no auth required)
+// Guest orders (no authentication required)
 router.post('/guest-create', createGuestOrder);
 
 export default router;
