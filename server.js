@@ -26,35 +26,47 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// ✅ Updated CORS configuration
+// ✅ Consolidated CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'https://hadibookstore.shop',
   'https://www.hadibookstore.shop',
+  'https://api.hadibookstore.shop',
   'https://hadi-books-store-frontend.vercel.app',
   'https://admin-panel-alpha-five.vercel.app',
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (e.g., mobile apps, Postman)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.log('CORS blocked for origin:', origin);
-        callback(new Error('Not allowed by CORS'), false);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., Postman, mobile apps)
+    if (!origin) return callback(null, true);
+
+    // Allow exact matches from our list
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    // Allow any subdomain of hadibookstore.shop (e.g., www.hadibookstore.shop, app.hadibookstore.shop)
+    try {
+      const url = new URL(origin);
+      if (url.hostname && url.hostname.endsWith('.hadibookstore.shop')) {
+        return callback(null, true);
       }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
-    exposedHeaders: ['Set-Cookie'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204, // Ensure proper response for preflight requests
-  })
-);
+    } catch (e) {
+      // fall through to block
+    }
+
+    console.warn('CORS blocked for origin:', origin);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
 
 // ✅ ADD SESSION MIDDLEWARE FOR GOOGLE OAUTH
 app.use(session({
@@ -74,8 +86,8 @@ app.use(session({
   })(),
 }));
 
-// Explicitly handle OPTIONS requests for all routes
-app.options('*', cors());
+// Explicitly handle OPTIONS requests for all routes using the same CORS options
+app.options('*', cors(corsOptions));
 
 app.use(passport.initialize());
 
