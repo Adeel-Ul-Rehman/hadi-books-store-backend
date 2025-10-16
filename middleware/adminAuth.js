@@ -1,5 +1,21 @@
 import jwt from "jsonwebtoken";
 
+const allowedOrigins = [
+  'https://hadibookstore.shop',
+  'https://www.hadibookstore.shop',
+  'https://api.hadibookstore.shop',
+  'http://localhost:5173',
+  'http://localhost:5174'
+];
+
+const addCorsHeaders = (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+};
+
 const adminAuth = async (req, res, next) => {
   let token = req.cookies.token;
 
@@ -9,6 +25,7 @@ const adminAuth = async (req, res, next) => {
   }
 
   if (!token) {
+    addCorsHeaders(req, res);
     return res.status(401).json({
       success: false,
       message: "Not authorized - Please login first",
@@ -20,6 +37,7 @@ const adminAuth = async (req, res, next) => {
 
     // Verify token has required fields
     if (!tokenDecode?.id) {
+      addCorsHeaders(req, res);
       return res.status(401).json({
         success: false,
         message: "Invalid token format",
@@ -33,6 +51,7 @@ const adminAuth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("JWT Verification Error:", error.message);
+    addCorsHeaders(req, res);
     return res.status(401).json({
       success: false,
       message: "Session expired - Please login again",

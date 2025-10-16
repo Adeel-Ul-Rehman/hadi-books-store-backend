@@ -117,14 +117,26 @@ app.get('/', (req, res) => {
   res.send('Backend is running');
 });
 
-// 404 handler
+// 404 handler with CORS
 app.use('*', (req, res) => {
+  // Ensure CORS headers are present even for 404
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
   res.status(404).json({ success: false, message: 'API endpoint not found' });
 });
 
-// Error handler
+// Error handler with CORS
 app.use((err, req, res, next) => {
   console.error('Global error:', err);
+  // Ensure CORS headers are present even for errors
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 

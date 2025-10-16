@@ -6,11 +6,29 @@ import transporter from '../config/transporter.js';
 
 const prisma = new PrismaClient();
 
+// CORS helper to add headers to all responses
+const allowedOrigins = [
+  'https://hadibookstore.shop',
+  'https://www.hadibookstore.shop',
+  'https://api.hadibookstore.shop',
+  'http://localhost:5173',
+  'http://localhost:5174'
+];
+
+const addCorsHeaders = (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+};
+
 const calculateCheckout = async (req, res) => {
   try {
     const { items, shippingFee = 0, taxes = 0 } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Invalid or empty items' });
     }
 
@@ -19,6 +37,7 @@ const calculateCheckout = async (req, res) => {
 
     for (const item of items) {
       if (!item.productId || !item.quantity || isNaN(item.quantity) || item.quantity < 1) {
+        addCorsHeaders(req, res);
         return res.status(400).json({ success: false, message: 'Invalid item data' });
       }
 
@@ -28,6 +47,7 @@ const calculateCheckout = async (req, res) => {
       });
 
       if (!product || !product.availability) {
+        addCorsHeaders(req, res);
         return res.status(404).json({ success: false, message: `Product ${item.productId} not found or unavailable` });
       }
 
@@ -57,6 +77,7 @@ const calculateCheckout = async (req, res) => {
     });
   } catch (error) {
     console.error('Calculate Checkout Error:', error.message, error.stack);
+    addCorsHeaders(req, res);
     return res.status(500).json({ success: false, message: 'Failed to calculate checkout' });
   }
 };
@@ -68,14 +89,17 @@ const processCheckout = async (req, res) => {
 
     // Validate input
     if (!userId || !items || !Array.isArray(items) || items.length === 0 || !address || !city || !postCode || !country || !mobileNumber) {
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
     if (!validator.isMobilePhone(mobileNumber, 'any', { strictMode: false })) {
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Invalid mobile number' });
     }
 
     const allowedPaymentMethods = ['cod', 'online'];
     if (!allowedPaymentMethods.includes(paymentMethod)) {
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Invalid payment method. Choose either "cod" or "online".' });
     }
 
@@ -84,6 +108,7 @@ const processCheckout = async (req, res) => {
     if (paymentMethod === 'online') {
       const allowedOnlineOptions = ['JazzCash', 'EasyPaisa', 'BankTransfer'];
       if (!onlinePaymentOption || !allowedOnlineOptions.includes(onlinePaymentOption)) {
+        addCorsHeaders(req, res);
         return res.status(400).json({ success: false, message: 'Invalid online payment option. Choose either "JazzCash", "EasyPaisa", or "BankTransfer".' });
       }
       storedPaymentMethod = onlinePaymentOption; // Store the specific online payment option in the database
@@ -94,6 +119,7 @@ const processCheckout = async (req, res) => {
     const validatedItems = [];
     for (const item of items) {
       if (!item.productId || !item.quantity || isNaN(item.quantity) || item.quantity < 1) {
+        addCorsHeaders(req, res);
         return res.status(400).json({ success: false, message: 'Invalid item data' });
       }
       const product = await prisma.product.findUnique({
@@ -101,6 +127,7 @@ const processCheckout = async (req, res) => {
         select: { id: true, price: true, availability: true, name: true, image: true },
       });
       if (!product || !product.availability) {
+        addCorsHeaders(req, res);
         return res.status(404).json({ success: false, message: `Product ${item.productId} not found or unavailable` });
       }
       const itemTotal = product.price * item.quantity;
@@ -316,6 +343,7 @@ Order Date: ${order.createdAt.toISOString()}
     });
   } catch (error) {
     console.error('Process Checkout Error:', error.message, error.stack);
+    addCorsHeaders(req, res);
     return res.status(500).json({ success: false, message: 'Failed to process checkout' });
   }
 };
@@ -328,6 +356,7 @@ const uploadPaymentProof = async (req, res) => {
 
     if (!orderId || !file) {
       if (file) await cleanupTempFiles(file.path);
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Order ID and proof file are required' });
     }
 
@@ -338,16 +367,19 @@ const uploadPaymentProof = async (req, res) => {
 
     if (!order || order.userId !== userId) {
       if (file) await cleanupTempFiles(file.path);
+      addCorsHeaders(req, res);
       return res.status(403).json({ success: false, message: 'Unauthorized access or order not found' });
     }
 
     if (!order.payment) {
       if (file) await cleanupTempFiles(file.path);
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'No payment associated with this order' });
     }
 
     if (order.payment.status !== 'pending') {
       if (file) await cleanupTempFiles(file.path);
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Payment is not in pending status' });
     }
 
@@ -372,6 +404,7 @@ const uploadPaymentProof = async (req, res) => {
   } catch (error) {
     if (req.files?.proof?.[0]) await cleanupTempFiles(req.files.proof[0].path);
     console.error('Upload Payment Proof Error:', error.message, error.stack);
+    addCorsHeaders(req, res);
     return res.status(500).json({ success: false, message: 'Failed to upload payment proof' });
   }
 };
@@ -383,6 +416,7 @@ const uploadGuestPaymentProof = async (req, res) => {
 
     if (!orderId || !guestEmail || !file) {
       if (file) await cleanupTempFiles(file.path);
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Order ID, guest email and proof file are required' });
     }
 
@@ -393,16 +427,19 @@ const uploadGuestPaymentProof = async (req, res) => {
 
     if (!guestOrder || guestOrder.guestEmail !== guestEmail) {
       if (file) await cleanupTempFiles(file.path);
+      addCorsHeaders(req, res);
       return res.status(403).json({ success: false, message: 'Unauthorized access or guest order not found' });
     }
 
     if (!guestOrder.payment) {
       if (file) await cleanupTempFiles(file.path);
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'No payment associated with this guest order' });
     }
 
     if (guestOrder.payment.status !== 'pending') {
       if (file) await cleanupTempFiles(file.path);
+      addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Payment is not in pending status' });
     }
 
@@ -427,6 +464,7 @@ const uploadGuestPaymentProof = async (req, res) => {
   } catch (error) {
     if (req.files?.proof?.[0]) await cleanupTempFiles(req.files.proof[0].path);
     console.error('Upload Guest Payment Proof Error:', error.message, error.stack);
+    addCorsHeaders(req, res);
     return res.status(500).json({ success: false, message: 'Failed to upload guest payment proof' });
   }
 };

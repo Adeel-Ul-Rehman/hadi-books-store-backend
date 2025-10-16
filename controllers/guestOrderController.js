@@ -1,7 +1,25 @@
 import { PrismaClient } from '@prisma/client';
 import transporter from '../config/transporter.js';
+import validator from 'validator';
 
 const prisma = new PrismaClient();
+
+// CORS helper to add headers to all responses
+const allowedOrigins = [
+  'https://hadibookstore.shop',
+  'https://www.hadibookstore.shop',
+  'https://api.hadibookstore.shop',
+  'http://localhost:5173',
+  'http://localhost:5174'
+];
+
+const addCorsHeaders = (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+};
 
 const createGuestOrder = async (req, res) => {
   try {
@@ -30,6 +48,7 @@ const createGuestOrder = async (req, res) => {
 
     // Enhanced validation
     if (!guestName || !guestEmail || !shippingAddress || !items || !Array.isArray(items) || items.length === 0 || !totalPrice) {
+      addCorsHeaders(req, res);
       return res.status(400).json({ 
         success: false, 
         message: 'Missing required fields: name, email, shipping address, items, and total price are required' 
@@ -37,6 +56,7 @@ const createGuestOrder = async (req, res) => {
     }
 
     if (!validator.isEmail(guestEmail)) {
+      addCorsHeaders(req, res);
       return res.status(400).json({ 
         success: false, 
         message: 'Invalid email format' 
@@ -53,6 +73,7 @@ const createGuestOrder = async (req, res) => {
 
     for (const item of items) {
       if (!item.productId || !item.quantity || isNaN(item.quantity) || item.quantity < 1 || item.price == null) {
+        addCorsHeaders(req, res);
         return res.status(400).json({ 
           success: false, 
           message: 'Invalid item data: productId, quantity, and price are required' 
@@ -61,6 +82,7 @@ const createGuestOrder = async (req, res) => {
       
       const product = productMap.get(item.productId);
       if (!product) {
+        addCorsHeaders(req, res);
         return res.status(404).json({ 
           success: false, 
           message: `Product ${item.productId} not found` 
@@ -68,6 +90,7 @@ const createGuestOrder = async (req, res) => {
       }
       
       if (product.availability === false) {
+        addCorsHeaders(req, res);
         return res.status(400).json({ 
           success: false, 
           message: `Product "${product.name}" is not available` 
@@ -76,6 +99,7 @@ const createGuestOrder = async (req, res) => {
       
       // Allow minor floating point differences (0.01 tolerance)
       if (Math.abs(item.price - product.price) > 0.01) {
+        addCorsHeaders(req, res);
         return res.status(400).json({ 
           success: false, 
           message: `Price mismatch for product "${product.name}". Expected: ${product.price}, Received: ${item.price}` 
@@ -88,6 +112,7 @@ const createGuestOrder = async (req, res) => {
     const calculatedTotal = calculatedSubtotal + taxes + shippingFee;
     
     if (Math.abs(calculatedTotal - totalPrice) > 0.01) {
+      addCorsHeaders(req, res);
       return res.status(400).json({ 
         success: false, 
         message: `Total price mismatch. Calculated: ${calculatedTotal.toFixed(2)}, Received: ${totalPrice}` 
@@ -99,6 +124,7 @@ const createGuestOrder = async (req, res) => {
     if (paymentMethod === 'online') {
       const allowedOnlineOptions = ['JazzCash', 'EasyPaisa', 'BankTransfer'];
       if (!onlinePaymentOption || !allowedOnlineOptions.includes(onlinePaymentOption)) {
+        addCorsHeaders(req, res);
         return res.status(400).json({ 
           success: false, 
           message: 'Invalid online payment option. Must be one of: JazzCash, EasyPaisa, BankTransfer' 
@@ -108,6 +134,7 @@ const createGuestOrder = async (req, res) => {
     } else if (paymentMethod === 'cod') {
       storedPaymentMethod = 'cod';
     } else {
+      addCorsHeaders(req, res);
       return res.status(400).json({ 
         success: false, 
         message: 'Invalid payment method. Must be "cod" or "online"' 
@@ -317,6 +344,7 @@ Payment Status: ${guestOrder.paymentStatus}
     
     // More specific error messages
     if (error.code === 'P2002') {
+      addCorsHeaders(req, res);
       return res.status(400).json({ 
         success: false, 
         message: 'Order creation failed due to duplicate entry' 
@@ -324,20 +352,19 @@ Payment Status: ${guestOrder.paymentStatus}
     }
     
     if (error.message.includes('connect')) {
+      addCorsHeaders(req, res);
       return res.status(500).json({ 
         success: false, 
         message: 'Database connection error. Please try again.' 
       });
     }
     
+    addCorsHeaders(req, res);
     return res.status(500).json({ 
       success: false, 
       message: 'Failed to place guest order. Please try again.' 
     });
   }
 };
-
-// Add validator import at the top
-import validator from 'validator';
 
 export { createGuestOrder };
