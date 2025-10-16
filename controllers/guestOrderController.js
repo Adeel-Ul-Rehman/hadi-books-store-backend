@@ -26,17 +26,29 @@ const createGuestOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required fields for guest order' });
     }
 
-    // Validate items and product availability/prices
+    // Validate items and product availability/prices BEFORE starting a transaction
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Items array is required' });
+    }
+
+    const productIds = items.map(it => it.productId);
+    const products = await prisma.product.findMany({ where: { id: { in: productIds } } });
+    const productMap = new Map(products.map(p => [p.id, p]));
+
     for (const item of items) {
-      if (!item.productId || !item.quantity || isNaN(item.quantity) || item.quantity < 1 || !item.price) {
+      if (!item.productId || !item.quantity || isNaN(item.quantity) || item.quantity < 1 || item.price == null) {
         return res.status(400).json({ success: false, message: 'Invalid item data' });
       }
-      const product = await prisma.product.findUnique({ where: { id: item.productId } });
-      if (!product || !product.availability) {
-        return res.status(404).json({ success: false, message: `Product ${item.productId} not found or unavailable` });
+      const product = productMap.get(item.productId);
+      if (!product) {
+        return res.status(404).json({ success: false, message: `Product ${item.productId} not found` });
       }
-      if (item.price !== product.price) {
-        return res.status(400).json({ success: false, message: `Price mismatch for product ${item.productId}` });
+      if (product.availability === false) {
+        return res.status(400).json({ success: false, message: `Product ${product.name || item.productId} is not available` });
+      }
+      // Allow minor floating point differences
+      if (Math.abs(item.price - product.price) > 0.01) {
+        return res.status(400).json({ success: false, message: `Price mismatch for product ${product.name || item.productId}` });
       }
     }
 
@@ -106,7 +118,7 @@ const createGuestOrder = async (req, res) => {
 
     // Prepare email content for guest and admin
     const itemDetails = guestOrder.items
-      .map(item => `Product: ${item.product.name}, Quantity: ${item.quantity}, Price: PKR ${item.price.toFixed(2)}`)
+      .map(item => `Product: ${item.product?.name || item.productId}, Quantity: ${item.quantity}, Price: PKR ${Number(item.price).toFixed(2)}`)
       .join('\n');
 
   const emailContentGuest = `
