@@ -10,11 +10,21 @@ export const sendEmailWithTimeout = async (emailOptions, timeout = 15000) => {
   return Promise.race([
     // Email sending promise
     resend.emails.send(emailOptions)
-      .then(() => ({ success: true }))
-      .catch((error) => ({ 
-        success: false, 
-        error: error.message || 'Email sending failed' 
-      })),
+      .then((response) => {
+        if (response.error) {
+          console.error('❌ Resend API error:', response.error);
+          return { success: false, error: response.error.message || 'Email sending failed' };
+        }
+        console.log('✅ Email sent successfully via Resend:', response.data);
+        return { success: true };
+      })
+      .catch((error) => {
+        console.error('❌ Resend API exception:', error);
+        return { 
+          success: false, 
+          error: error.message || 'Email sending failed' 
+        };
+      }),
     
     // Timeout promise
     new Promise((resolve) => 

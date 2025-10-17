@@ -268,7 +268,15 @@ const forgotPassword = async (req, res) => {
       `,
     };
 
-    await resend.emails.send(mailOptions);
+    const { data, error } = await resend.emails.send(mailOptions);
+    
+    if (error) {
+      console.error('❌ Failed to send OTP email:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email',
+      });
+    }
 
     return res.status(200).json({
       success: true,

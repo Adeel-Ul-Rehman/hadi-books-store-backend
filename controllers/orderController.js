@@ -188,15 +188,20 @@ Order Date: ${order.createdAt.toISOString()}
 
     // Send email to admin
     try {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
         to: process.env.SENDER_EMAIL,
         subject: `[USER ORDER] New Order - ${order.id}`,
         text: emailContent,
       });
-      console.log('✅ Order confirmation email sent to admin');
+      
+      if (error) {
+        console.error('❌ Failed to send order confirmation email:', error);
+      } else {
+        console.log('✅ Order confirmation email sent to admin');
+      }
     } catch (emailError) {
-      console.error('❌ Failed to send order confirmation email:', emailError);
+      console.error('❌ Exception sending order confirmation email:', emailError);
       // Don't fail the order if email fails
     }
 

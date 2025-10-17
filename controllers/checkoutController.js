@@ -275,29 +275,39 @@ Order Date: ${order.createdAt.toISOString()}
       // Send email to user
       if (userRecord?.email) {
         try {
-          await resend.emails.send({
+          const { data, error } = await resend.emails.send({
             from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
             to: userRecord.email,
             subject: `Order Confirmation - ${order.id}`,
             text: emailContentUser,
           });
-          console.log('Order confirmation email sent to:', userRecord.email);
+          
+          if (error) {
+            console.error('Failed to send order confirmation email to user:', error);
+          } else {
+            console.log('Order confirmation email sent to:', userRecord.email);
+          }
         } catch (emailErr) {
-          console.error('Failed to send order confirmation email to user:', emailErr);
+          console.error('Exception sending order confirmation email to user:', emailErr);
         }
       }
 
       // Send email to admin
       try {
-        await resend.emails.send({
+        const { data, error } = await resend.emails.send({
           from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
           to: process.env.SENDER_EMAIL,
           subject: `New Order - ${order.id}`,
           text: emailContentAdmin,
         });
-        console.log('Admin notification email sent for order:', order.id);
+        
+        if (error) {
+          console.error('Failed to send admin notification for order:', error);
+        } else {
+          console.log('Admin notification email sent for order:', order.id);
+        }
       } catch (emailErr) {
-        console.error('Failed to send admin notification for order:', emailErr);
+        console.error('Exception sending admin notification for order:', emailErr);
       }
     } catch (err) {
       console.error('Error preparing/sending order emails for logged-in user:', err);

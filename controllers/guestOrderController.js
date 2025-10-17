@@ -79,27 +79,37 @@ Payment Status: ${guestOrder.paymentStatus}
   // Run email sending in background
   setTimeout(async () => {
     try {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
         to: guestOrder.guestEmail,
         subject: `Order Confirmation - ${guestOrder.id}`,
         text: emailContentGuest,
       });
-      console.log('✅ Guest order confirmation email sent to:', guestOrder.guestEmail);
+      
+      if (error) {
+        console.error('❌ Failed to send guest confirmation email:', error);
+      } else {
+        console.log('✅ Guest order confirmation email sent to:', guestOrder.guestEmail);
+      }
     } catch (emailErr) {
-      console.error('❌ Failed to send guest confirmation email:', emailErr);
+      console.error('❌ Exception sending guest confirmation email:', emailErr);
     }
 
     try {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
         to: process.env.SENDER_EMAIL,
         subject: `[GUEST ORDER] New Order - ${guestOrder.id}`,
         text: emailContentAdmin,
       });
-      console.log('✅ Admin notification email sent for guest order:', guestOrder.id);
+      
+      if (error) {
+        console.error('❌ Failed to send admin notification:', error);
+      } else {
+        console.log('✅ Admin notification email sent for guest order:', guestOrder.id);
+      }
     } catch (emailErr) {
-      console.error('❌ Failed to send admin notification for guest order:', emailErr);
+      console.error('❌ Exception sending admin notification:', emailErr);
     }
     console.timeEnd('sendEmails');
   }, 0);
