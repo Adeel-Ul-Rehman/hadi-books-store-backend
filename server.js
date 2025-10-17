@@ -30,9 +30,9 @@ if (process.env.NODE_ENV === 'production') {
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'http://localhost:5174',
   'https://hadibookstore.shop',
   'https://www.hadibookstore.shop',
-  'https://api.hadibookstore.shop',
   'https://hadi-books-store-frontend.vercel.app',
   'https://admin-panel-alpha-five.vercel.app',
 ];
