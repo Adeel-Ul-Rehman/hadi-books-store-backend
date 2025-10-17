@@ -11,8 +11,8 @@ if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // TLS
+  port: 465, // Changed from 587 to 465 (SSL instead of TLS)
+  secure: true, // Changed to true for SSL
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -26,6 +26,11 @@ const transporter = nodemailer.createTransport({
   maxConnections: 1,
   rateDelta: 1000,
   rateLimit: 5,
+  // Additional options to help with connection
+  requireTLS: false, // We're using SSL, not TLS
+  tls: {
+    rejectUnauthorized: false, // Accept self-signed certificates (less strict)
+  },
 });
 
 // Enhanced transporter verification with better error handling
