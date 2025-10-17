@@ -11,8 +11,18 @@ if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
 
 // Determine which SMTP service to use based on SMTP_USER
 const isSendGrid = process.env.SMTP_USER === 'apikey';
+const isResend = process.env.SMTP_USER === 'resend';
 
-const smtpConfig = isSendGrid ? {
+const smtpConfig = isResend ? {
+  // Resend configuration (FREE - 100 emails/day)
+  host: 'smtp.resend.com',
+  port: 587,
+  secure: false, // Use TLS
+  auth: {
+    user: 'resend',
+    pass: process.env.SMTP_PASS, // Resend API key
+  },
+} : isSendGrid ? {
   // SendGrid configuration (more reliable from cloud servers)
   host: 'smtp.sendgrid.net',
   port: 587,
