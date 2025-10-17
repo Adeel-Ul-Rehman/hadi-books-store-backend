@@ -63,7 +63,7 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
   exposedHeaders: ['Set-Cookie'],
   preflightContinue: false,
-  optionsSuccessStatus: 204,
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
