@@ -1,15 +1,15 @@
-import transporter from '../config/transporter.js';
+import resend from '../config/resend.js';
 
 /**
- * Send email with timeout protection
- * @param {Object} mailOptions - nodemailer mail options
+ * Send email with timeout protection using Resend API
+ * @param {Object} emailOptions - Resend email options {from, to, subject, html, text}
  * @param {number} timeout - timeout in milliseconds (default 15000ms = 15s)
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-export const sendEmailWithTimeout = async (mailOptions, timeout = 15000) => {
+export const sendEmailWithTimeout = async (emailOptions, timeout = 15000) => {
   return Promise.race([
     // Email sending promise
-    transporter.sendMail(mailOptions)
+    resend.emails.send(emailOptions)
       .then(() => ({ success: true }))
       .catch((error) => ({ 
         success: false, 
@@ -36,8 +36,8 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
     reset: 'Password Reset OTP',
   };
 
-  const mailOptions = {
-    from: process.env.SENDER_EMAIL,
+  const emailOptions = {
+    from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
     to: email,
     subject: subjects[type] || 'OTP Verification',
     html: `
@@ -59,7 +59,7 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
     text: `Your OTP for Book Store ${type} is ${otp}. Valid for 24 hours.`,
   };
 
-  const result = await sendEmailWithTimeout(mailOptions);
+  const result = await sendEmailWithTimeout(emailOptions);
   
   if (result.success) {
     console.log(`✅ ${type} OTP email sent successfully to ${email}`);
@@ -75,8 +75,8 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
  * Send order confirmation email (non-blocking)
  */
 export const sendOrderConfirmationEmail = async (email, name, orderDetails) => {
-  const mailOptions = {
-    from: process.env.SENDER_EMAIL,
+  const emailOptions = {
+    from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
     to: email,
     subject: 'Order Confirmation - Book Store',
     html: `
@@ -99,7 +99,7 @@ export const sendOrderConfirmationEmail = async (email, name, orderDetails) => {
     text: `Your order (ID: ${orderDetails.orderId}) has been confirmed. Total: Rs. ${orderDetails.totalAmount}`,
   };
 
-  const result = await sendEmailWithTimeout(mailOptions);
+  const result = await sendEmailWithTimeout(emailOptions);
   
   if (result.success) {
     console.log(`✅ Order confirmation email sent successfully to ${email}`);

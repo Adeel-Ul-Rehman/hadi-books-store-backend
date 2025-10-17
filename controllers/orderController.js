@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import transporter from '../config/transporter.js';
+import resend from '../config/resend.js';
 import validator from 'validator';
 
 const prisma = new PrismaClient();
@@ -188,8 +188,8 @@ Order Date: ${order.createdAt.toISOString()}
 
     // Send email to admin
     try {
-      await transporter.sendMail({
-        from: `"Hadi Books Store" <${process.env.SMTP_USER}>`,
+      await resend.emails.send({
+        from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
         to: process.env.SENDER_EMAIL,
         subject: `[USER ORDER] New Order - ${order.id}`,
         text: emailContent,

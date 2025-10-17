@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import validator from "validator";
-import transporter from "../config/transporter.js";
 import { sendOTPEmail, sendOrderConfirmationEmail } from "../utils/emailHelper.js";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
