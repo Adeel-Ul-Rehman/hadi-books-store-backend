@@ -105,7 +105,7 @@ Payment Status: ${guestOrder.paymentStatus}
   }, 0);
 };
 
-const createGuestOrder = async (req, res) => {
+export const createGuestOrder = async (req, res) => {
   console.time('createGuestOrder');
   try {
     const {
