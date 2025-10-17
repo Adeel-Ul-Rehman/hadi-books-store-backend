@@ -98,7 +98,13 @@ export const register = async (req, res) => {
 
     // Send email with enhanced error handling
     // Send OTP email (non-blocking - won't fail the registration if email fails)
-    sendOTPEmail(email, name, otp, 'verification');
+    try {
+      sendOTPEmail(email, name, otp, 'verification').catch(err => {
+        console.error('❌ Failed to send verification OTP email (non-blocking):', err);
+      });
+    } catch (emailError) {
+      console.error('❌ Error triggering verification OTP email:', emailError);
+    }
 
     // For debugging: Log the OTP (remove in production)
     console.log(`OTP generated for ${email}: ${otp}`);
@@ -151,8 +157,14 @@ export const sendVerifyOtp = async (req, res) => {
       },
     });
 
-    // Send OTP email (non-blocking)
-    sendOTPEmail(user.email, user.name, otp, 'verification');
+    // Send OTP email (non-blocking, with error handling)
+    try {
+      sendOTPEmail(user.email, user.name, otp, 'verification').catch(err => {
+        console.error('❌ Failed to resend verification OTP email (non-blocking):', err);
+      });
+    } catch (emailError) {
+      console.error('❌ Error triggering resend verification OTP email:', emailError);
+    }
 
     // For debugging: Log the OTP (remove in production)
     console.log(`Resend OTP generated for ${user.email}: ${otp}`);
@@ -580,8 +592,14 @@ export const sendResetOtp = async (req, res) => {
       });
     }
 
-    // Send OTP email (non-blocking)
-    sendOTPEmail(email, `${user.name} ${user.lastName || ""}`, otp, 'reset');
+    // Send OTP email (non-blocking, with error handling)
+    try {
+      sendOTPEmail(email, `${user.name} ${user.lastName || ""}`, otp, 'reset').catch(err => {
+        console.error('❌ Failed to send reset OTP email (non-blocking):', err);
+      });
+    } catch (emailError) {
+      console.error('❌ Error triggering reset OTP email:', emailError);
+    }
     
     console.log(`✅ Password reset OTP generated for ${email}: ${otp}`);
     
