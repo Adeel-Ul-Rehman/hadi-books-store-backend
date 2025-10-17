@@ -1,153 +1,3 @@
-// import express from 'express';
-// import dotenv from 'dotenv';
-// import cors from 'cors';
-// import cookieParser from 'cookie-parser';
-// import session from 'express-session';
-// import { PrismaClient } from '@prisma/client';
-// import userRoutes from './routes/userRoute.js';
-// import adminRoutes from './routes/adminRoute.js';
-// import authRoutes from './routes/authRoute.js';
-// import cartRoutes from './routes/cartRoute.js';
-// import orderRoutes from './routes/orderRoute.js';
-// import productRoutes from './routes/productRoute.js';
-// import reviewRoutes from './routes/reviewRoute.js';
-// import wishlistRoutes from './routes/wishlistRoute.js';
-// import checkoutRoutes from './routes/checkoutRoute.js';
-// import heroRoutes from './routes/heroRoute.js';
-// import passport from './middleware/passport.js';
-
-// dotenv.config();
-// const app = express();
-// const prisma = new PrismaClient();
-
-// // Enable trust proxy for production (e.g., Vercel, Cloudflare)
-// if (process.env.NODE_ENV === 'production') {
-//   app.set('trust proxy', 1);
-// }
-
-// // Consolidated CORS configuration
-// const allowedOrigins = [
-//   'http://localhost:5173',
-//   'http://localhost:3000',
-//   'http://localhost:5174',
-//   'https://hadibookstore.shop',
-//   'https://www.hadibookstore.shop',
-//   'https://hadi-books-store-frontend.vercel.app',
-//   'https://admin-panel-alpha-five.vercel.app',
-// ];
-
-// const corsOptions = {
-//   origin: (origin, callback) => {
-//     // Allow requests with no origin (e.g., Postman, mobile apps)
-//     if (!origin) return callback(null, true);
-
-//     // Allow exact matches from our list
-//     if (allowedOrigins.includes(origin)) return callback(null, true);
-
-//     // Allow any subdomain of hadibookstore.shop
-//     try {
-//       const url = new URL(origin);
-//       if (url.hostname && url.hostname.endsWith('.hadibookstore.shop')) {
-//         return callback(null, true);
-//       }
-//     } catch (e) {
-//       // Fall through to block
-//     }
-
-//     console.warn('CORS blocked for origin:', origin);
-//     return callback(new Error('Not allowed by CORS'), false);
-//   },
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
-//   exposedHeaders: ['Set-Cookie'],
-//   preflightContinue: false,
-//   optionsSuccessStatus: 200,
-// };
-
-// app.use(cors(corsOptions));
-
-// // Handle OPTIONS requests for all routes
-// app.options('*', cors(corsOptions));
-
-// // Session middleware for Google OAuth
-// app.use(
-//   session({
-//     secret: process.env.SESSION_SECRET || 'fallback-secret-key-for-development',
-//     resave: false,
-//     saveUninitialized: false,
-//     cookie: (function () {
-//       const cookieCfg = {
-//         secure: process.env.NODE_ENV === 'production',
-//         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-//         maxAge: 10 * 60 * 1000, // 10 minutes
-//       };
-//       if (process.env.COOKIE_DOMAIN) {
-//         cookieCfg.domain = process.env.COOKIE_DOMAIN;
-//       }
-//       return cookieCfg;
-//     })(),
-//   })
-// );
-
-// app.use(passport.initialize());
-
-// app.use(express.json({ limit: '10mb' }));
-// app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-// app.use(cookieParser());
-
-// // Routes
-// app.use('/api/auth', authRoutes);
-// app.use('/api/user', userRoutes);
-// app.use('/api/cart', cartRoutes);
-// app.use('/api/adminCtrl', adminRoutes);
-// app.use('/api/orders', orderRoutes);
-// app.use('/api/products', productRoutes);
-// app.use('/api/reviews', reviewRoutes);
-// app.use('/api/wishlist', wishlistRoutes);
-// app.use('/api/checkout', checkoutRoutes);
-// app.use('/api/hero', heroRoutes);
-
-// // Health check
-// app.get('/api/health', (req, res) => {
-//   res.status(200).json({ success: true, message: 'Server is running' });
-// });
-
-// app.get('/', (req, res) => {
-//   res.send('Backend is running');
-// });
-
-// // 404 handler
-// app.use('*', (req, res) => {
-//   res.status(404).json({ success: false, message: 'API endpoint not found' });
-// });
-
-// // Error handler
-// app.use((err, req, res, next) => {
-//   console.error('Global error:', err);
-//   res.status(500).json({ success: false, message: 'Internal server error' });
-// });
-
-// // Start server
-// const PORT = process.env.PORT || 4000;
-// app.listen(PORT, async () => {
-//   try {
-//     await prisma.$connect();
-//     console.log(`✅ Server running on port ${PORT}`);
-//     console.log('✅ Connected to Neon PostgreSQL database');
-//     console.log('✅ Session middleware configured for Google OAuth');
-//   } catch (error) {
-//     console.error('❌ Database connection error:', error);
-//     process.exit(1);
-//   }
-// });
-
-// // Graceful shutdown
-// process.on('SIGTERM', async () => {
-//   console.log('Shutting down server...');
-//   await prisma.$disconnect();
-//   process.exit(0);
-// });
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -165,23 +15,48 @@ import wishlistRoutes from './routes/wishlistRoute.js';
 import checkoutRoutes from './routes/checkoutRoute.js';
 import heroRoutes from './routes/heroRoute.js';
 import passport from './middleware/passport.js';
-import transporter from './config/transporter.js';
 
 dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-// Make transporter available globally
-app.locals.transporter = transporter;
-
-// Enable trust proxy for production
+// Enable trust proxy for production (e.g., Vercel, Cloudflare)
 if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// Temporary CORS configuration: Allow all origins
+// Consolidated CORS configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5174',
+  'https://hadibookstore.shop',
+  'https://www.hadibookstore.shop',
+  'https://hadi-books-store-frontend.vercel.app',
+  'https://admin-panel-alpha-five.vercel.app',
+];
+
 const corsOptions = {
-  origin: '*', // Allow all origins temporarily for testing
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., Postman, mobile apps)
+    if (!origin) return callback(null, true);
+
+    // Allow exact matches from our list
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    // Allow any subdomain of hadibookstore.shop
+    try {
+      const url = new URL(origin);
+      if (url.hostname && url.hostname.endsWith('.hadibookstore.shop')) {
+        return callback(null, true);
+      }
+    } catch (e) {
+      // Fall through to block
+    }
+
+    console.warn('CORS blocked for origin:', origin);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
@@ -191,6 +66,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Handle OPTIONS requests for all routes
 app.options('*', cors(corsOptions));
 
 // Session middleware for Google OAuth
@@ -199,16 +76,22 @@ app.use(
     secret: process.env.SESSION_SECRET || 'fallback-secret-key-for-development',
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 10 * 60 * 1000,
-      domain: process.env.COOKIE_DOMAIN || undefined,
-    },
+    cookie: (function () {
+      const cookieCfg = {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 10 * 60 * 1000, // 10 minutes
+      };
+      if (process.env.COOKIE_DOMAIN) {
+        cookieCfg.domain = process.env.COOKIE_DOMAIN;
+      }
+      return cookieCfg;
+    })(),
   })
 );
 
 app.use(passport.initialize());
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
@@ -253,7 +136,6 @@ app.listen(PORT, async () => {
     console.log(`✅ Server running on port ${PORT}`);
     console.log('✅ Connected to Neon PostgreSQL database');
     console.log('✅ Session middleware configured for Google OAuth');
-    console.log('⚠️ CORS set to allow all origins (*) for testing');
   } catch (error) {
     console.error('❌ Database connection error:', error);
     process.exit(1);
