@@ -10,7 +10,6 @@ if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
 }
 
 // Determine which SMTP service to use based on SMTP_USER
-const isSendGrid = process.env.SMTP_USER === 'apikey';
 const isResend = process.env.SMTP_USER === 'resend';
 
 const smtpConfig = isResend ? {
@@ -21,15 +20,6 @@ const smtpConfig = isResend ? {
   auth: {
     user: 'resend',
     pass: process.env.SMTP_PASS, // Resend API key
-  },
-} : isSendGrid ? {
-  // SendGrid configuration (more reliable from cloud servers)
-  host: 'smtp.sendgrid.net',
-  port: 587,
-  secure: false, // Use TLS
-  auth: {
-    user: 'apikey',
-    pass: process.env.SMTP_PASS, // SendGrid API key
   },
 } : {
   // Gmail configuration (for local development)
@@ -65,12 +55,20 @@ if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     if (error) {
       console.error('❌ Email transporter verification failed:', error);
       console.error('Please check your SMTP credentials and ensure:');
-      console.error('1. Gmail account has 2-factor authentication disabled');
-      console.error('2. App password is generated correctly');
-      console.error('3. SMTP_USER and SMTP_PASS are correctly set in .env');
+      if (process.env.SMTP_USER === 'resend') {
+        console.error('1. Resend API key is correct (starts with re_)');
+        console.error('2. Sender email is verified in Resend dashboard');
+        console.error('3. SMTP_USER is set to "resend" in .env');
+      } else {
+        console.error('1. Gmail account has 2-factor authentication enabled');
+        console.error('2. App password is generated correctly');
+        console.error('3. SMTP_USER and SMTP_PASS are correctly set in .env');
+      }
     } else {
       console.log('✅ Email transporter is ready and configured correctly');
-      console.log('📧 Emails will be sent from:', process.env.SMTP_USER);
+      const service = process.env.SMTP_USER === 'resend' ? 'Resend' : 'Gmail';
+      console.log(`📧 Using ${service} for email delivery`);
+      console.log('� Emails will be sent from:', process.env.SENDER_EMAIL || process.env.SMTP_USER);
     }
   });
 } else {
