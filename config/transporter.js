@@ -9,28 +9,44 @@ if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
   console.error('Please check your .env file configuration');
 }
 
-const transporter = nodemailer.createTransport({
+// Determine which SMTP service to use based on SMTP_USER
+const isSendGrid = process.env.SMTP_USER === 'apikey';
+
+const smtpConfig = isSendGrid ? {
+  // SendGrid configuration (more reliable from cloud servers)
+  host: 'smtp.sendgrid.net',
+  port: 587,
+  secure: false, // Use TLS
+  auth: {
+    user: 'apikey',
+    pass: process.env.SMTP_PASS, // SendGrid API key
+  },
+} : {
+  // Gmail configuration (for local development)
   host: 'smtp.gmail.com',
-  port: 465, // Changed from 587 to 465 (SSL instead of TLS)
-  secure: true, // Changed to true for SSL
+  port: 465,
+  secure: true, // Use SSL
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-  // Add timeout configuration to prevent hanging
+  requireTLS: false,
+  tls: {
+    rejectUnauthorized: false,
+  },
+};
+
+const transporter = nodemailer.createTransport({
+  ...smtpConfig,
+  // Common timeout configuration
   connectionTimeout: 10000, // 10 seconds
   greetingTimeout: 10000, // 10 seconds
   socketTimeout: 10000, // 10 seconds
   // Add retry configuration
-  pool: false, // Disable connection pooling to avoid reusing failed connections
+  pool: false, // Disable connection pooling
   maxConnections: 1,
   rateDelta: 1000,
   rateLimit: 5,
-  // Additional options to help with connection
-  requireTLS: false, // We're using SSL, not TLS
-  tls: {
-    rejectUnauthorized: false, // Accept self-signed certificates (less strict)
-  },
 });
 
 // Enhanced transporter verification with better error handling
