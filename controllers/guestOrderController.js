@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import resend from '../config/resend.js';
+import transporter from '../config/emailTransporter.js';
 import validator from 'validator';
 
 const prisma = new PrismaClient();
@@ -79,37 +79,27 @@ Payment Status: ${guestOrder.paymentStatus}
   // Run email sending in background
   setTimeout(async () => {
     try {
-      const { data, error } = await resend.emails.send({
-        from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
+      await transporter.sendMail({
+        from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
         to: guestOrder.guestEmail,
         subject: `Order Confirmation - ${guestOrder.id}`,
         text: emailContentGuest,
       });
-      
-      if (error) {
-        console.error('❌ Failed to send guest confirmation email:', error);
-      } else {
-        console.log('✅ Guest order confirmation email sent to:', guestOrder.guestEmail);
-      }
+      console.log('✅ Guest order confirmation email sent to:', guestOrder.guestEmail);
     } catch (emailErr) {
-      console.error('❌ Exception sending guest confirmation email:', emailErr);
+      console.error('❌ Failed to send guest confirmation email:', emailErr.message);
     }
 
     try {
-      const { data, error } = await resend.emails.send({
-        from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
-        to: process.env.SENDER_EMAIL || 'hadibooksstore01@gmail.com',
+      await transporter.sendMail({
+        from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
+        to: process.env.GMAIL_USER,
         subject: `[GUEST ORDER] New Order - ${guestOrder.id}`,
         text: emailContentAdmin,
       });
-      
-      if (error) {
-        console.error('❌ Failed to send admin notification:', error);
-      } else {
-        console.log('✅ Admin notification email sent for guest order:', guestOrder.id);
-      }
+      console.log('✅ Admin notification email sent for guest order:', guestOrder.id);
     } catch (emailErr) {
-      console.error('❌ Exception sending admin notification:', emailErr);
+      console.error('❌ Failed to send admin notification:', emailErr.message);
     }
     console.timeEnd('sendEmails');
   }, 0);

@@ -1,25 +1,21 @@
-import resend from '../config/resend.js';
+import transporter from '../config/emailTransporter.js';
 
 /**
- * Send email with timeout protection using Resend API
- * @param {Object} emailOptions - Resend email options {from, to, subject, html, text}
+ * Send email with timeout protection using Gmail SMTP
+ * @param {Object} mailOptions - nodemailer mail options {from, to, subject, html, text}
  * @param {number} timeout - timeout in milliseconds (default 15000ms = 15s)
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-export const sendEmailWithTimeout = async (emailOptions, timeout = 15000) => {
+export const sendEmailWithTimeout = async (mailOptions, timeout = 15000) => {
   return Promise.race([
     // Email sending promise
-    resend.emails.send(emailOptions)
-      .then((response) => {
-        if (response.error) {
-          console.error('❌ Resend API error:', response.error);
-          return { success: false, error: response.error.message || 'Email sending failed' };
-        }
-        console.log('✅ Email sent successfully via Resend:', response.data);
+    transporter.sendMail(mailOptions)
+      .then((info) => {
+        console.log('✅ Email sent successfully:', info.messageId);
         return { success: true };
       })
       .catch((error) => {
-        console.error('❌ Resend API exception:', error);
+        console.error('❌ Email sending error:', error.message);
         return { 
           success: false, 
           error: error.message || 'Email sending failed' 
@@ -28,10 +24,13 @@ export const sendEmailWithTimeout = async (emailOptions, timeout = 15000) => {
     
     // Timeout promise
     new Promise((resolve) => 
-      setTimeout(() => resolve({ 
-        success: false, 
-        error: 'Email sending timeout (15s exceeded)' 
-      }), timeout)
+      setTimeout(() => {
+        console.warn('⏰ Email sending timeout (15s exceeded)');
+        return resolve({ 
+          success: false, 
+          error: 'Email sending timeout (15s exceeded)' 
+        });
+      }, timeout)
     ),
   ]);
 };
@@ -47,7 +46,7 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
   };
 
   const emailOptions = {
-    from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier requires this domain
+    from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
     to: email,
     subject: subjects[type] || 'OTP Verification',
     html: `
@@ -86,7 +85,7 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
  */
 export const sendOrderConfirmationEmail = async (email, name, orderDetails) => {
   const emailOptions = {
-    from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier requires this domain
+    from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
     to: email,
     subject: 'Order Confirmation - Book Store',
     html: `

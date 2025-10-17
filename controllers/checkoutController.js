@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import validator from 'validator';
 import upload, { cleanupTempFiles } from '../middleware/multer.js';
 import cloudinary from '../config/cloudinary.js';
-import resend from '../config/resend.js';
+import transporter from '../config/emailTransporter.js';
 
 const prisma = new PrismaClient();
 
@@ -275,39 +275,29 @@ Order Date: ${order.createdAt.toISOString()}
       // Send email to user
       if (userRecord?.email) {
         try {
-          const { data, error } = await resend.emails.send({
-            from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
+          await transporter.sendMail({
+            from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
             to: userRecord.email,
             subject: `Order Confirmation - ${order.id}`,
             text: emailContentUser,
           });
-          
-          if (error) {
-            console.error('Failed to send order confirmation email to user:', error);
-          } else {
-            console.log('Order confirmation email sent to:', userRecord.email);
-          }
+          console.log('Order confirmation email sent to:', userRecord.email);
         } catch (emailErr) {
-          console.error('Exception sending order confirmation email to user:', emailErr);
+          console.error('Failed to send order confirmation email to user:', emailErr.message);
         }
       }
 
       // Send email to admin
       try {
-        const { data, error } = await resend.emails.send({
-          from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
-          to: process.env.SENDER_EMAIL || 'hadibooksstore01@gmail.com',
+        await transporter.sendMail({
+          from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
+          to: process.env.GMAIL_USER,
           subject: `New Order - ${order.id}`,
           text: emailContentAdmin,
         });
-        
-        if (error) {
-          console.error('Failed to send admin notification for order:', error);
-        } else {
-          console.log('Admin notification email sent for order:', order.id);
-        }
+        console.log('Admin notification email sent for order:', order.id);
       } catch (emailErr) {
-        console.error('Exception sending admin notification for order:', emailErr);
+        console.error('Failed to send admin notification for order:', emailErr.message);
       }
     } catch (err) {
       console.error('Error preparing/sending order emails for logged-in user:', err);

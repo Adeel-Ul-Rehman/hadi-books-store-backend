@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import resend from '../config/resend.js';
+import transporter from '../config/emailTransporter.js';
 import validator from 'validator';
 
 const prisma = new PrismaClient();
@@ -188,20 +188,15 @@ Order Date: ${order.createdAt.toISOString()}
 
     // Send email to admin
     try {
-      const { data, error } = await resend.emails.send({
-        from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
-        to: process.env.SENDER_EMAIL || 'hadibooksstore01@gmail.com',
+      await transporter.sendMail({
+        from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
+        to: process.env.GMAIL_USER,
         subject: `[USER ORDER] New Order - ${order.id}`,
         text: emailContent,
       });
-      
-      if (error) {
-        console.error('❌ Failed to send order confirmation email:', error);
-      } else {
-        console.log('✅ Order confirmation email sent to admin');
-      }
+      console.log('✅ Order confirmation email sent to admin');
     } catch (emailError) {
-      console.error('❌ Exception sending order confirmation email:', emailError);
+      console.error('❌ Failed to send order confirmation email:', emailError.message);
       // Don't fail the order if email fails
     }
 
