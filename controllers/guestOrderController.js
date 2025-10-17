@@ -291,7 +291,7 @@ const createGuestOrder = async (req, res) => {
     console.log('✅ Guest order created:', guestOrder.id);
 
     // Send emails in background
-    // await sendEmailsInBackground(fullOrder, calculatedSubtotal);
+    await sendEmailsInBackground(fullOrder, calculatedSubtotal);
 
     console.timeEnd('createGuestOrder');
 
