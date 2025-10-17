@@ -11,6 +11,7 @@ const allowedOrigins = [
   'https://hadibookstore.shop',
   'https://www.hadibookstore.shop',
   'https://api.hadibookstore.shop',
+  'http://api.hadibookstore.shop',
   'http://localhost:5173',
   'http://localhost:5174'
 ];
