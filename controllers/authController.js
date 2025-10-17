@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import validator from "validator";
 import transporter from "../config/transporter.js";
+import { sendOTPEmail, sendOrderConfirmationEmail } from "../utils/emailHelper.js";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import cloudinary from "cloudinary";
@@ -97,40 +98,8 @@ export const register = async (req, res) => {
     }
 
     // Send email with enhanced error handling
-    try {
-      const mailOptions = {
-        from: process.env.SENDER_EMAIL,
-        to: email,
-        subject: `Account Verification OTP`,
-        html: `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-        <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
-          <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
-          <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${name}</strong>,</p>
-          <p style="font-size: 16px; line-height: 1.5;">Please use the following OTP to verify your Book Store account:</p>
-          <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
-            <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Verification OTP</h3>
-            <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
-            <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 24 hours</p>
-          </div>
-          <p style="font-size: 16px; line-height: 1.5;">Enter this OTP in the app to complete your account verification.</p>
-          <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
-        </div>
-      </div>
-    `,
-        text: `Your OTP for Book Store account verification is ${otp}. Valid for 24 hours.`,
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log(`✅ OTP email sent successfully to ${email}: ${otp}`);
-    } catch (emailError) {
-      console.error('❌ Failed to send OTP email:', emailError.message);
-      console.error('Email error details:', emailError);
-      // Don't fail the registration if email fails, but log it
-      console.log(`📝 OTP for ${email} (not sent via email): ${otp}`);
-      // Still return success but with a warning about email
-      message += " However, email delivery failed. Please try resending OTP.";
-    }
+    // Send OTP email (non-blocking - won't fail the registration if email fails)
+    sendOTPEmail(email, name, otp, 'verification');
 
     // For debugging: Log the OTP (remove in production)
     console.log(`OTP generated for ${email}: ${otp}`);
@@ -183,49 +152,16 @@ export const sendVerifyOtp = async (req, res) => {
       },
     });
 
-    // Send email with enhanced error handling
-    try {
-      const mailOptions = {
-        from: process.env.SENDER_EMAIL,
-        to: user.email,
-        subject: `Account Verification OTP`,
-        html: `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-        <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
-          <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
-          <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${user.name}</strong>,</p>
-          <p style="font-size: 16px; line-height: 1.5;">Please use the following OTP to verify your Book Store account:</p>
-          <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
-            <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Verification OTP</h3>
-            <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
-            <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 24 hours</p>
-          </div>
-          <p style="font-size: 16px; line-height: 1.5;">Enter this OTP in the app to complete your account verification.</p>
-          <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
-        </div>
-      </div>
-    `,
-        text: `Your OTP for Book Store account verification is ${otp}. Valid for 24 hours.`,
-      };
+    // Send OTP email (non-blocking)
+    sendOTPEmail(user.email, user.name, otp, 'verification');
 
-      await transporter.sendMail(mailOptions);
-      console.log(`✅ Resend OTP email sent successfully to ${user.email}: ${otp}`);
+    // For debugging: Log the OTP (remove in production)
+    console.log(`Resend OTP generated for ${user.email}: ${otp}`);
 
-      // For debugging: Log the OTP (remove in production)
-      console.log(`Resend OTP generated for ${user.email}: ${otp}`);
-
-      return res.json({
-        success: true,
-        message: "Verification OTP sent to email",
-      });
-    } catch (emailError) {
-      console.error('❌ Failed to resend OTP email:', emailError.message);
-      console.error('Email error details:', emailError);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send OTP email. Please try again.",
-      });
-    }
+    return res.json({
+      success: true,
+      message: "Verification OTP sent to email",
+    });
   } catch (error) {
     console.error("OTP send error:", error.message, error.stack);
     return res.status(500).json({
@@ -645,53 +581,15 @@ export const sendResetOtp = async (req, res) => {
       });
     }
 
-    // Send email with enhanced error handling
-    try {
-      const mailOptions = {
-        from: process.env.SENDER_EMAIL,
-        to: email,
-        subject: `🔐 Book Store Password Reset Verification`,
-        html: `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-        <div style="padding: 30px; border: 2px solid #00308F; border-radius: 12px; background-color: #ffffff;">
-          <h1 style="color: #E31837; text-align: center; margin-bottom: 20px; font-size: 28px;">Book Store</h1>
-          <p style="font-size: 16px; line-height: 1.5;">Hello <strong>${user.name} ${user.lastName || ""}</strong>,</p>
-          <p style="font-size: 16px; line-height: 1.5;">We received a request to reset your password for your Book Store account with email: <strong>${email}</strong>.</p>
-          <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; border: 1px dashed #00308F;">
-            <h3 style="color: #E31837; font-size: 18px; margin-bottom: 10px;">Password Reset OTP</h3>
-            <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #E31837; margin: 0;">${otp}</p>
-            <p style="font-size: 14px; color: #555; margin-top: 10px;">This OTP is valid for 10 minutes</p>
-          </div>
-          <p style="font-size: 16px; line-height: 1.5;">Please enter this OTP in the app to proceed with resetting your password.</p>
-          <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">Best regards,<br><strong>The Book Store Team</strong></p>
-        </div>
-      </div>
-    `,
-        text: `Book Store - Password Reset
-Dear ${user.name} ${user.lastName || ""}, 
-We received a request to reset your password for your Book Store account with email: ${email}.
-Password Reset OTP: ${otp}
-This OTP is valid for 10 minutes.
-Please enter this OTP in the app to proceed with resetting your password.
-Best regards,
-The Book Store Team`,
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log(`✅ Password reset OTP email sent successfully to ${email}: ${otp}`);
-      
-      return res.json({
-        success: true,
-        message: "Password reset OTP sent to email",
-      });
-    } catch (emailError) {
-      console.error('❌ Failed to send password reset OTP email:', emailError.message);
-      console.error('Email error details:', emailError);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send reset OTP email. Please try again.",
-      });
-    }
+    // Send OTP email (non-blocking)
+    sendOTPEmail(email, `${user.name} ${user.lastName || ""}`, otp, 'reset');
+    
+    console.log(`✅ Password reset OTP generated for ${email}: ${otp}`);
+    
+    return res.json({
+      success: true,
+      message: "Password reset OTP sent to email",
+    });
   } catch (error) {
     console.error("Reset OTP error:", error.message, error.stack);
     return res.status(500).json({

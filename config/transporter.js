@@ -17,6 +17,15 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  // Add timeout configuration to prevent hanging
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000, // 10 seconds
+  socketTimeout: 10000, // 10 seconds
+  // Add retry configuration
+  pool: false, // Disable connection pooling to avoid reusing failed connections
+  maxConnections: 1,
+  rateDelta: 1000,
+  rateLimit: 5,
 });
 
 // Enhanced transporter verification with better error handling
