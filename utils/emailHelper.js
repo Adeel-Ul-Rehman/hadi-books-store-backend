@@ -47,7 +47,7 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
   };
 
   const emailOptions = {
-    from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
+    from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier requires this domain
     to: email,
     subject: subjects[type] || 'OTP Verification',
     html: `
@@ -86,7 +86,7 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
  */
 export const sendOrderConfirmationEmail = async (email, name, orderDetails) => {
   const emailOptions = {
-    from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
+    from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier requires this domain
     to: email,
     subject: 'Order Confirmation - Book Store',
     html: `

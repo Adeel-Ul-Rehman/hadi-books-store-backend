@@ -9,7 +9,8 @@ if (!process.env.RESEND_API_KEY) {
   console.error('Please add RESEND_API_KEY to your .env file');
 } else {
   console.log('✅ Resend API configured successfully');
-  console.log(`📬 Emails will be sent from: ${process.env.SENDER_EMAIL || 'onboarding@resend.dev'}`);
+  console.log('📬 Emails will be sent from: Hadi Books Store <onboarding@resend.dev>');
+  console.log('📧 Free tier: 100 emails/day, 3,000 emails/month');
 }
 
 // Initialize Resend with API key

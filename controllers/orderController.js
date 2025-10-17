@@ -189,8 +189,8 @@ Order Date: ${order.createdAt.toISOString()}
     // Send email to admin
     try {
       const { data, error } = await resend.emails.send({
-        from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
-        to: process.env.SENDER_EMAIL,
+        from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
+        to: process.env.SENDER_EMAIL || 'hadibooksstore01@gmail.com',
         subject: `[USER ORDER] New Order - ${order.id}`,
         text: emailContent,
       });

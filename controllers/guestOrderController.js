@@ -80,7 +80,7 @@ Payment Status: ${guestOrder.paymentStatus}
   setTimeout(async () => {
     try {
       const { data, error } = await resend.emails.send({
-        from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
+        from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
         to: guestOrder.guestEmail,
         subject: `Order Confirmation - ${guestOrder.id}`,
         text: emailContentGuest,
@@ -97,8 +97,8 @@ Payment Status: ${guestOrder.paymentStatus}
 
     try {
       const { data, error } = await resend.emails.send({
-        from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
-        to: process.env.SENDER_EMAIL,
+        from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
+        to: process.env.SENDER_EMAIL || 'hadibooksstore01@gmail.com',
         subject: `[GUEST ORDER] New Order - ${guestOrder.id}`,
         text: emailContentAdmin,
       });

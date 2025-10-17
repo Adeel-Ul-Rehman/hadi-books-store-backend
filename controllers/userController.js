@@ -249,7 +249,7 @@ const forgotPassword = async (req, res) => {
 
     // Send OTP email to sharedEmail
     const mailOptions = {
-      from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
+      from: 'Hadi Books Store <onboarding@resend.dev>', // Resend free tier domain
       to: sharedEmail,
       subject: 'Password Reset OTP - Hadi Books Store Admin',
       html: `
