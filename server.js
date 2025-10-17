@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import session from 'express-session'; // ADD THIS IMPORT
+import session from 'express-session';
 import { PrismaClient } from '@prisma/client';
 import userRoutes from './routes/userRoute.js';
 import adminRoutes from './routes/adminRoute.js';
@@ -20,13 +20,12 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-// When deployed behind a proxy (Vercel, Cloudflare, Heroku), enable trust proxy
+// Enable trust proxy for production (e.g., Vercel, Cloudflare)
 if (process.env.NODE_ENV === 'production') {
-  // trust first proxy
   app.set('trust proxy', 1);
 }
 
-// ✅ Consolidated CORS configuration
+// Consolidated CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
@@ -45,14 +44,14 @@ const corsOptions = {
     // Allow exact matches from our list
     if (allowedOrigins.includes(origin)) return callback(null, true);
 
-    // Allow any subdomain of hadibookstore.shop (e.g., www.hadibookstore.shop, app.hadibookstore.shop)
+    // Allow any subdomain of hadibookstore.shop
     try {
       const url = new URL(origin);
       if (url.hostname && url.hostname.endsWith('.hadibookstore.shop')) {
         return callback(null, true);
       }
     } catch (e) {
-      // fall through to block
+      // Fall through to block
     }
 
     console.warn('CORS blocked for origin:', origin);
@@ -68,26 +67,28 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// ✅ ADD SESSION MIDDLEWARE FOR GOOGLE OAUTH
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallback-secret-key-for-development',
-  resave: false,
-  saveUninitialized: false,
-  cookie: (function() {
-    const cookieCfg = {
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 10 * 60 * 1000, // 10 minutes - enough for OAuth flow
-    };
-    if (process.env.COOKIE_DOMAIN) {
-      cookieCfg.domain = process.env.COOKIE_DOMAIN;
-    }
-    return cookieCfg;
-  })(),
-}));
-
-// Explicitly handle OPTIONS requests for all routes using the same CORS options
+// Handle OPTIONS requests for all routes
 app.options('*', cors(corsOptions));
+
+// Session middleware for Google OAuth
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'fallback-secret-key-for-development',
+    resave: false,
+    saveUninitialized: false,
+    cookie: (function () {
+      const cookieCfg = {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 10 * 60 * 1000, // 10 minutes
+      };
+      if (process.env.COOKIE_DOMAIN) {
+        cookieCfg.domain = process.env.COOKIE_DOMAIN;
+      }
+      return cookieCfg;
+    })(),
+  })
+);
 
 app.use(passport.initialize());
 
@@ -107,7 +108,6 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/hero', heroRoutes);
 
-
 // Health check
 app.get('/api/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running' });
@@ -117,26 +117,14 @@ app.get('/', (req, res) => {
   res.send('Backend is running');
 });
 
-// 404 handler with CORS
+// 404 handler
 app.use('*', (req, res) => {
-  // Ensure CORS headers are present even for 404
-  const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-  }
   res.status(404).json({ success: false, message: 'API endpoint not found' });
 });
 
-// Error handler with CORS
+// Error handler
 app.use((err, req, res, next) => {
   console.error('Global error:', err);
-  // Ensure CORS headers are present even for errors
-  const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-  }
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
