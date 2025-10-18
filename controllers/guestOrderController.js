@@ -79,27 +79,41 @@ Payment Status: ${guestOrder.paymentStatus}
   // Run email sending in background
   setTimeout(async () => {
     try {
-      await resend.emails.send({
+      const guestEmailResult = await resend.emails.send({
         from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: guestOrder.guestEmail,
         subject: `Order Confirmation - ${guestOrder.id}`,
         text: emailContentGuest,
       });
-      console.log('✅ Guest order confirmation email sent to:', guestOrder.guestEmail);
+      
+      console.log('📬 Guest email Resend response:', JSON.stringify(guestEmailResult, null, 2));
+      
+      if (guestEmailResult.error) {
+        console.error('❌ Failed to send guest confirmation email:', guestEmailResult.error);
+      } else {
+        console.log('✅ Guest order confirmation email sent to:', guestOrder.guestEmail, '| ID:', guestEmailResult.data?.id);
+      }
     } catch (emailErr) {
-      console.error('❌ Failed to send guest confirmation email:', emailErr.message);
+      console.error('❌ Exception sending guest confirmation email:', emailErr);
     }
 
     try {
-      await resend.emails.send({
+      const adminEmailResult = await resend.emails.send({
         from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: 'hadibooksstore01@gmail.com',
         subject: `[GUEST ORDER] New Order - ${guestOrder.id}`,
         text: emailContentAdmin,
       });
-      console.log('✅ Admin notification email sent for guest order:', guestOrder.id);
+      
+      console.log('📬 Admin email Resend response:', JSON.stringify(adminEmailResult, null, 2));
+      
+      if (adminEmailResult.error) {
+        console.error('❌ Failed to send admin notification:', adminEmailResult.error);
+      } else {
+        console.log('✅ Admin notification email sent for guest order:', guestOrder.id, '| ID:', adminEmailResult.data?.id);
+      }
     } catch (emailErr) {
-      console.error('❌ Failed to send admin notification:', emailErr.message);
+      console.error('❌ Exception sending admin notification:', emailErr);
     }
     console.timeEnd('sendEmails');
   }, 0);

@@ -42,7 +42,6 @@ export const sendEmailWithTimeout = async (emailOptions, timeout = 15000) => {
     // Timeout promise
     new Promise((resolve) => 
       setTimeout(() => {
-        console.warn('⏰ Email sending timeout (15s exceeded)');
         return resolve({ 
           success: false, 
           error: 'Email sending timeout (15s exceeded)' 
