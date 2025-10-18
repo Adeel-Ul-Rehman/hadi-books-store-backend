@@ -276,7 +276,7 @@ Order Date: ${order.createdAt.toISOString()}
       if (userRecord?.email) {
         try {
           await resend.emails.send({
-            from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
+            from: 'Hadi Books Store <noreply@hadibookstore.shop>',
             to: userRecord.email,
             subject: `Order Confirmation - ${order.id}`,
             text: emailContentUser,
@@ -290,7 +290,7 @@ Order Date: ${order.createdAt.toISOString()}
       // Send email to admin
       try {
         await resend.emails.send({
-          from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
+          from: 'Hadi Books Store <noreply@hadibookstore.shop>',
           to: 'hadibooksstore01@gmail.com',
           subject: `New Order - ${order.id}`,
           text: emailContentAdmin,

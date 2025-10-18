@@ -9,7 +9,7 @@ if (!process.env.RESEND_API_KEY) {
   console.error('Please add RESEND_API_KEY to your .env file');
 } else {
   console.log('✅ Resend API configured successfully');
-  console.log('📬 Emails will be sent from: noreply@send.hadibookstore.shop');
+  console.log('📬 Emails will be sent from: noreply@hadibookstore.shop');
   console.log('📧 Domain verified - can send to ANY email address!');
 }
 

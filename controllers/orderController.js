@@ -189,7 +189,7 @@ Order Date: ${order.createdAt.toISOString()}
     // Send email to admin
     try {
       await resend.emails.send({
-        from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
+        from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: 'hadibooksstore01@gmail.com',
         subject: `[USER ORDER] New Order - ${order.id}`,
         text: emailContent,

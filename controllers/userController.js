@@ -249,7 +249,7 @@ const forgotPassword = async (req, res) => {
 
     // Send OTP email to sharedEmail
     const mailOptions = {
-      from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
+      from: 'Hadi Books Store <noreply@hadibookstore.shop>',
       to: sharedEmail,
       subject: 'Password Reset OTP - Hadi Books Store Admin',
       html: `
