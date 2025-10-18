@@ -6,75 +6,30 @@ const prisma = new PrismaClient();
 
 const sendEmailsInBackground = async (guestOrder, calculatedSubtotal) => {
   console.time('sendEmails');
-  const itemDetails = guestOrder.items
+  
+  const itemDetailsHTML = guestOrder.items
+    .map((item) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #eeeeee; color: #333333; font-size: 14px;">
+          ${item.product?.name || 'Unknown Product'}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #eeeeee; color: #666666; font-size: 14px; text-align: center;">
+          ${item.quantity}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #eeeeee; color: #333333; font-size: 14px; text-align: right;">
+          PKR ${Number(item.price).toFixed(2)}
+        </td>
+      </tr>
+    `)
+    .join('');
+
+  const itemDetailsText = guestOrder.items
     .map((item) => `• ${item.product?.name || 'Unknown Product'} - Qty: ${item.quantity} - Price: PKR ${Number(item.price).toFixed(2)}`)
     .join('\n');
 
-  const emailContentGuest = `
-Thank you for your order at Hadi Books Store!
-
-Order Summary:
-──────────────
-Order ID: ${guestOrder.id}
-Name: ${guestOrder.guestName}
-Email: ${guestOrder.guestEmail}
-Phone: ${guestOrder.guestPhone || 'Not provided'}
-
-Shipping Address:
-${guestOrder.shippingAddress}
-${guestOrder.city ? guestOrder.city + ', ' : ''}${guestOrder.postCode ? guestOrder.postCode + ', ' : ''}${guestOrder.country || ''}
-
-Order Details:
-──────────────
-${itemDetails}
-
-Order Total:
-────────────
-Subtotal: PKR ${calculatedSubtotal.toFixed(2)}
-Taxes: PKR ${guestOrder.taxes.toFixed(2)}
-Shipping Fee: PKR ${guestOrder.shippingFee.toFixed(2)}
-Total: PKR ${guestOrder.totalPrice.toFixed(2)}
-
-Payment Method: ${guestOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : guestOrder.paymentMethod}
-
-We will contact you via email or phone regarding your order status. 
-If you have any questions, please reply to this email.
-
-Thank you for shopping with us!
-Hadi Books Store Team
-`;
-
-  const emailContentAdmin = `
-NEW GUEST ORDER PLACED
-──────────────────────
-Order ID: ${guestOrder.id}
-Order Date: ${guestOrder.createdAt.toISOString()}
-
-Guest Details:
-──────────────
-Name: ${guestOrder.guestName}
-Email: ${guestOrder.guestEmail}
-Phone: ${guestOrder.guestPhone || 'Not provided'}
-
-Shipping Address:
-────────────────
-${guestOrder.shippingAddress}
-${guestOrder.city ? guestOrder.city + ', ' : ''}${guestOrder.postCode ? guestOrder.postCode + ', ' : ''}${guestOrder.country || ''}
-
-Order Details:
-──────────────
-${itemDetails}
-
-Order Total:
-────────────
-Subtotal: PKR ${calculatedSubtotal.toFixed(2)}
-Taxes: PKR ${guestOrder.taxes.toFixed(2)}
-Shipping Fee: PKR ${guestOrder.shippingFee.toFixed(2)}
-Total: PKR ${guestOrder.totalPrice.toFixed(2)}
-
-Payment Method: ${guestOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : guestOrder.paymentMethod}
-Payment Status: ${guestOrder.paymentStatus}
-`;
+  const itemDetailsText = guestOrder.items
+    .map((item) => `• ${item.product?.name || 'Unknown Product'} - Qty: ${item.quantity} - Price: PKR ${Number(item.price).toFixed(2)}`)
+    .join('\n');
 
   // Run email sending in background
   setTimeout(async () => {
@@ -82,8 +37,141 @@ Payment Status: ${guestOrder.paymentStatus}
       const guestEmailResult = await resend.emails.send({
         from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: guestOrder.guestEmail,
-        subject: `Order Confirmation - ${guestOrder.id}`,
-        text: emailContentGuest,
+        subject: `Order Confirmation #${guestOrder.id.substring(0, 8)} - Hadi Books Store`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 0;">
+                  <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                      <td style="padding: 40px 30px; text-align: center; background: linear-gradient(135deg, #00308F 0%, #E31837 100%); border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Hadi Books Store</h1>
+                        <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px;">Order Confirmation</p>
+                      </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                      <td style="padding: 40px 30px;">
+                        <h2 style="margin: 0 0 10px 0; color: #333333; font-size: 24px;">Thank you, ${guestOrder.guestName}!</h2>
+                        <p style="margin: 0 0 30px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                          Your order has been confirmed and will be processed soon. We'll contact you via email or phone regarding your order status.
+                        </p>
+                        
+                        <!-- Order Details -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 25px 0; background-color: #f9f9f9; border-radius: 8px;">
+                          <tr>
+                            <td style="padding: 25px;">
+                              <h3 style="margin: 0 0 15px 0; color: #00308F; font-size: 18px;">Order Details</h3>
+                              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                  <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Order ID:</strong></td>
+                                  <td style="padding: 8px 0; color: #333333; font-size: 14px; text-align: right;">#${guestOrder.id.substring(0, 8)}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Email:</strong></td>
+                                  <td style="padding: 8px 0; color: #333333; font-size: 14px; text-align: right;">${guestOrder.guestEmail}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 8px 0; color: #666666; font-size: 14px;"><strong>Phone:</strong></td>
+                                  <td style="padding: 8px 0; color: #333333; font-size: 14px; text-align: right;">${guestOrder.guestPhone || 'Not provided'}</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <!-- Shipping Address -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 25px 0; background-color: #f9f9f9; border-radius: 8px;">
+                          <tr>
+                            <td style="padding: 25px;">
+                              <h3 style="margin: 0 0 15px 0; color: #00308F; font-size: 18px;">Shipping Address</h3>
+                              <p style="margin: 0; color: #333333; font-size: 14px; line-height: 1.6;">
+                                ${guestOrder.shippingAddress}<br>
+                                ${guestOrder.city ? guestOrder.city + ', ' : ''}${guestOrder.postCode ? guestOrder.postCode + ', ' : ''}${guestOrder.country || ''}
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <!-- Items -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 25px 0;">
+                          <tr>
+                            <td colspan="3" style="padding: 15px 0; border-bottom: 2px solid #00308F;">
+                              <h3 style="margin: 0; color: #00308F; font-size: 18px;">Order Items</h3>
+                            </td>
+                          </tr>
+                          <tr style="background-color: #f9f9f9;">
+                            <th style="padding: 12px; text-align: left; color: #666666; font-size: 12px; font-weight: bold; text-transform: uppercase;">Item</th>
+                            <th style="padding: 12px; text-align: center; color: #666666; font-size: 12px; font-weight: bold; text-transform: uppercase;">Qty</th>
+                            <th style="padding: 12px; text-align: right; color: #666666; font-size: 12px; font-weight: bold; text-transform: uppercase;">Price</th>
+                          </tr>
+                          ${itemDetailsHTML}
+                        </table>
+                        
+                        <!-- Order Total -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 25px 0; background-color: #f9f9f9; border-radius: 8px;">
+                          <tr>
+                            <td style="padding: 25px;">
+                              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                  <td style="padding: 8px 0; color: #666666; font-size: 14px;">Subtotal:</td>
+                                  <td style="padding: 8px 0; color: #333333; font-size: 14px; text-align: right;">PKR ${calculatedSubtotal.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 8px 0; color: #666666; font-size: 14px;">Taxes:</td>
+                                  <td style="padding: 8px 0; color: #333333; font-size: 14px; text-align: right;">PKR ${guestOrder.taxes.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 8px 0; color: #666666; font-size: 14px;">Shipping Fee:</td>
+                                  <td style="padding: 8px 0; color: #333333; font-size: 14px; text-align: right;">PKR ${guestOrder.shippingFee.toFixed(2)}</td>
+                                </tr>
+                                <tr style="border-top: 2px solid #00308F;">
+                                  <td style="padding: 15px 0 0 0; color: #00308F; font-size: 16px; font-weight: bold;">Total:</td>
+                                  <td style="padding: 15px 0 0 0; color: #E31837; font-size: 20px; font-weight: bold; text-align: right;">PKR ${guestOrder.totalPrice.toFixed(2)}</td>
+                                </tr>
+                                <tr>
+                                  <td colspan="2" style="padding: 10px 0 0 0; color: #666666; font-size: 14px;">Payment Method: ${guestOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : guestOrder.paymentMethod}</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding: 30px; background-color: #f9f9f9; border-radius: 0 0 8px 8px; border-top: 1px solid #eeeeee;">
+                        <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px; text-align: center;">
+                          Thank you for shopping with us!<br>
+                          <strong>Hadi Books Store Team</strong>
+                        </p>
+                        <p style="margin: 15px 0 0 0; color: #999999; font-size: 12px; text-align: center; line-height: 1.5;">
+                          This is an automated email. Please do not reply to this message.<br>
+                          © ${new Date().getFullYear()} Hadi Books Store. All rights reserved.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+          </html>
+        `,
+        text: `Hello ${guestOrder.guestName},\n\nThank you for your order at Hadi Books Store!\n\nOrder ID: #${guestOrder.id.substring(0, 8)}\nEmail: ${guestOrder.guestEmail}\nPhone: ${guestOrder.guestPhone || 'Not provided'}\n\nShipping Address:\n${guestOrder.shippingAddress}\n${guestOrder.city ? guestOrder.city + ', ' : ''}${guestOrder.postCode ? guestOrder.postCode + ', ' : ''}${guestOrder.country || ''}\n\nOrder Items:\n${itemDetailsText}\n\nOrder Total:\nSubtotal: PKR ${calculatedSubtotal.toFixed(2)}\nTaxes: PKR ${guestOrder.taxes.toFixed(2)}\nShipping Fee: PKR ${guestOrder.shippingFee.toFixed(2)}\nTotal: PKR ${guestOrder.totalPrice.toFixed(2)}\n\nPayment Method: ${guestOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : guestOrder.paymentMethod}\n\nWe will contact you via email or phone regarding your order status.\n\nThank you for shopping with us!\nHadi Books Store Team`,
+        headers: {
+          'X-Entity-Ref-ID': `guest-order-${guestOrder.id}`,
+        },
       });
       
       console.log('📬 Guest email Resend response:', JSON.stringify(guestEmailResult, null, 2));
@@ -101,8 +189,11 @@ Payment Status: ${guestOrder.paymentStatus}
       const adminEmailResult = await resend.emails.send({
         from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: 'hadibooksstore01@gmail.com',
-        subject: `[GUEST ORDER] New Order - ${guestOrder.id}`,
-        text: emailContentAdmin,
+        subject: `[GUEST ORDER] New Order #${guestOrder.id.substring(0, 8)} - Hadi Books Store`,
+        text: `NEW GUEST ORDER PLACED\n──────────────────────\nOrder ID: ${guestOrder.id}\nOrder Date: ${guestOrder.createdAt.toISOString()}\n\nGuest Details:\n──────────────\nName: ${guestOrder.guestName}\nEmail: ${guestOrder.guestEmail}\nPhone: ${guestOrder.guestPhone || 'Not provided'}\n\nShipping Address:\n────────────────\n${guestOrder.shippingAddress}\n${guestOrder.city ? guestOrder.city + ', ' : ''}${guestOrder.postCode ? guestOrder.postCode + ', ' : ''}${guestOrder.country || ''}\n\nOrder Items:\n${itemDetailsText}\n\nOrder Total:\n────────────\nSubtotal: PKR ${calculatedSubtotal.toFixed(2)}\nTaxes: PKR ${guestOrder.taxes.toFixed(2)}\nShipping Fee: PKR ${guestOrder.shippingFee.toFixed(2)}\nTotal: PKR ${guestOrder.totalPrice.toFixed(2)}\n\nPayment Method: ${guestOrder.paymentMethod === 'cod' ? 'Cash on Delivery' : guestOrder.paymentMethod}\nPayment Status: ${guestOrder.paymentStatus}`,
+        headers: {
+          'X-Entity-Ref-ID': `admin-guest-order-${guestOrder.id}`,
+        },
       });
       
       console.log('📬 Admin email Resend response:', JSON.stringify(adminEmailResult, null, 2));
