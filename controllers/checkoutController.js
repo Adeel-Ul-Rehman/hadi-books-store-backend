@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import validator from 'validator';
 import upload, { cleanupTempFiles } from '../middleware/multer.js';
 import cloudinary from '../config/cloudinary.js';
-import transporter from '../config/emailTransporter.js';
+import resend from '../config/resend.js';
 
 const prisma = new PrismaClient();
 
@@ -275,8 +275,8 @@ Order Date: ${order.createdAt.toISOString()}
       // Send email to user
       if (userRecord?.email) {
         try {
-          await transporter.sendMail({
-            from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
+          await resend.emails.send({
+            from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
             to: userRecord.email,
             subject: `Order Confirmation - ${order.id}`,
             text: emailContentUser,
@@ -289,9 +289,9 @@ Order Date: ${order.createdAt.toISOString()}
 
       // Send email to admin
       try {
-        await transporter.sendMail({
-          from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
-          to: process.env.GMAIL_USER,
+        await resend.emails.send({
+          from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
+          to: 'hadibooksstore01@gmail.com',
           subject: `New Order - ${order.id}`,
           text: emailContentAdmin,
         });

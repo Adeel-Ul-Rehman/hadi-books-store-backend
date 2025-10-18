@@ -1,21 +1,25 @@
-import transporter from '../config/emailTransporter.js';
+import resend from '../config/resend.js';
 
 /**
- * Send email with timeout protection using Gmail SMTP
- * @param {Object} mailOptions - nodemailer mail options {from, to, subject, html, text}
+ * Send email with timeout protection using Resend API
+ * @param {Object} emailOptions - Resend email options {from, to, subject, html, text}
  * @param {number} timeout - timeout in milliseconds (default 15000ms = 15s)
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-export const sendEmailWithTimeout = async (mailOptions, timeout = 15000) => {
+export const sendEmailWithTimeout = async (emailOptions, timeout = 15000) => {
   return Promise.race([
     // Email sending promise
-    transporter.sendMail(mailOptions)
-      .then((info) => {
-        console.log('✅ Email sent successfully:', info.messageId);
+    resend.emails.send(emailOptions)
+      .then((response) => {
+        if (response.error) {
+          console.error('❌ Resend API error:', response.error);
+          return { success: false, error: response.error.message || 'Email sending failed' };
+        }
+        console.log('✅ Email sent successfully via Resend:', response.data?.id);
         return { success: true };
       })
       .catch((error) => {
-        console.error('❌ Email sending error:', error.message);
+        console.error('❌ Resend API exception:', error.message);
         return { 
           success: false, 
           error: error.message || 'Email sending failed' 
@@ -46,7 +50,7 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
   };
 
   const emailOptions = {
-    from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
+    from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
     to: email,
     subject: subjects[type] || 'OTP Verification',
     html: `
@@ -85,7 +89,7 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
  */
 export const sendOrderConfirmationEmail = async (email, name, orderDetails) => {
   const emailOptions = {
-    from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
+    from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
     to: email,
     subject: 'Order Confirmation - Book Store',
     html: `

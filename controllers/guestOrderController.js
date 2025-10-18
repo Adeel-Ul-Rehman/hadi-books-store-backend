@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import transporter from '../config/emailTransporter.js';
+import resend from '../config/resend.js';
 import validator from 'validator';
 
 const prisma = new PrismaClient();
@@ -79,8 +79,8 @@ Payment Status: ${guestOrder.paymentStatus}
   // Run email sending in background
   setTimeout(async () => {
     try {
-      await transporter.sendMail({
-        from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
+      await resend.emails.send({
+        from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
         to: guestOrder.guestEmail,
         subject: `Order Confirmation - ${guestOrder.id}`,
         text: emailContentGuest,
@@ -91,9 +91,9 @@ Payment Status: ${guestOrder.paymentStatus}
     }
 
     try {
-      await transporter.sendMail({
-        from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
-        to: process.env.GMAIL_USER,
+      await resend.emails.send({
+        from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
+        to: 'hadibooksstore01@gmail.com',
         subject: `[GUEST ORDER] New Order - ${guestOrder.id}`,
         text: emailContentAdmin,
       });

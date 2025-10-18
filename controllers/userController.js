@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import cloudinary from '../config/cloudinary.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import transporter from '../config/emailTransporter.js';
+import resend from '../config/resend.js';
 import fs from 'fs/promises';
 
 const prisma = new PrismaClient();
@@ -249,7 +249,7 @@ const forgotPassword = async (req, res) => {
 
     // Send OTP email to sharedEmail
     const mailOptions = {
-      from: `"Hadi Books Store" <${process.env.GMAIL_USER}>`,
+      from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
       to: sharedEmail,
       subject: 'Password Reset OTP - Hadi Books Store Admin',
       html: `
@@ -269,7 +269,7 @@ const forgotPassword = async (req, res) => {
     };
 
     try {
-      await transporter.sendMail(mailOptions);
+      await resend.emails.send(mailOptions);
       console.log('✅ OTP email sent to:', sharedEmail);
     } catch (emailError) {
       console.error('❌ Failed to send OTP email:', emailError.message);
