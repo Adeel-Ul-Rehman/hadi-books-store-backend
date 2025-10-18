@@ -7,19 +7,32 @@ import resend from '../config/resend.js';
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 export const sendEmailWithTimeout = async (emailOptions, timeout = 15000) => {
+  console.log('📤 Attempting to send email to:', emailOptions.to);
+  console.log('📧 From:', emailOptions.from);
+  console.log('📋 Subject:', emailOptions.subject);
+  
   return Promise.race([
     // Email sending promise
     resend.emails.send(emailOptions)
       .then((response) => {
+        console.log('📬 Resend API Response:', JSON.stringify(response, null, 2));
+        
         if (response.error) {
           console.error('❌ Resend API error:', response.error);
           return { success: false, error: response.error.message || 'Email sending failed' };
         }
-        console.log('✅ Email sent successfully via Resend:', response.data?.id);
+        
+        if (response.data && response.data.id) {
+          console.log('✅ Email sent successfully via Resend. ID:', response.data.id);
+          return { success: true, emailId: response.data.id };
+        }
+        
+        console.warn('⚠️ Unexpected Resend response format:', response);
         return { success: true };
       })
       .catch((error) => {
-        console.error('❌ Resend API exception:', error.message);
+        console.error('❌ Resend API exception:', error);
+        console.error('❌ Error details:', error.message);
         return { 
           success: false, 
           error: error.message || 'Email sending failed' 

@@ -80,7 +80,7 @@ Payment Status: ${guestOrder.paymentStatus}
   setTimeout(async () => {
     try {
       await resend.emails.send({
-        from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
+        from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: guestOrder.guestEmail,
         subject: `Order Confirmation - ${guestOrder.id}`,
         text: emailContentGuest,
@@ -92,7 +92,7 @@ Payment Status: ${guestOrder.paymentStatus}
 
     try {
       await resend.emails.send({
-        from: 'Hadi Books Store <noreply@send.hadibookstore.shop>',
+        from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: 'hadibooksstore01@gmail.com',
         subject: `[GUEST ORDER] New Order - ${guestOrder.id}`,
         text: emailContentAdmin,
