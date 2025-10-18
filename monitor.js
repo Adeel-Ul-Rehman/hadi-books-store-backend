@@ -4,8 +4,8 @@
  * Runs as a separate PM2 process
  */
 
-const { exec } = require('child_process');
-const http = require('http');
+import { exec } from 'child_process';
+import http from 'http';
 
 const APP_NAME = 'hadi-books-store';
 const HEALTH_CHECK_URL = 'http://localhost:4000/health';
