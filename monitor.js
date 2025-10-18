@@ -8,27 +8,13 @@ import { exec } from 'child_process';
 import http from 'http';
 
 const APP_NAME = 'hadi-books-store';
-const HEALTH_CHECK_URL = 'http://localhost:4000/health';
 const CHECK_INTERVAL = 30000; // 30 seconds
 const RESTART_TIMEOUT = 10000; // 10 seconds
 
-console.log('🔍 PM2 Health Monitor Started');
+console.log('🔍 PM2 Status Monitor Started (Database-Friendly Mode)');
 console.log(`📊 Monitoring: ${APP_NAME}`);
-console.log(`⏱️ Check interval: ${CHECK_INTERVAL / 1000}s\n`);
-
-function checkHealth() {
-  return new Promise((resolve) => {
-    const req = http.get(HEALTH_CHECK_URL, { timeout: 5000 }, (res) => {
-      resolve(res.statusCode === 200);
-    });
-    
-    req.on('error', () => resolve(false));
-    req.on('timeout', () => {
-      req.destroy();
-      resolve(false);
-    });
-  });
-}
+console.log(`⏱️ Check interval: ${CHECK_INTERVAL / 1000}s`);
+console.log(`💾 Database: Will NOT be kept awake\n`);
 
 function getPM2Status() {
   return new Promise((resolve) => {
@@ -51,6 +37,7 @@ function getPM2Status() {
           status: app.pm2_env.status,
           restarts: app.pm2_env.restart_time,
           uptime: app.pm2_env.pm_uptime,
+          memory: app.monit.memory,
           error: false
         });
       } catch (err) {
@@ -97,11 +84,11 @@ function startApp() {
 async function monitor() {
   const timestamp = new Date().toISOString();
   
-  // Check PM2 status
+  // Check PM2 status ONLY (no HTTP requests to save database hours)
   const pm2Status = await getPM2Status();
   
   if (pm2Status.error || pm2Status.status !== 'online') {
-    console.log(`⚠️ [${timestamp}] PM2 Status: ${pm2Status.status}`);
+    console.log(`⚠️ [${timestamp}] PM2 Status: ${pm2Status.status} - Taking action...`);
     
     if (pm2Status.status === 'not-found') {
       console.log('📦 App not found in PM2, starting...');
@@ -120,18 +107,9 @@ async function monitor() {
     } else {
       console.log(`❌ [${timestamp}] App still not online, will retry next cycle`);
     }
-    
-    return;
-  }
-  
-  // Check health endpoint
-  const isHealthy = await checkHealth();
-  
-  if (!isHealthy) {
-    console.log(`⚠️ [${timestamp}] Health check failed, restarting...`);
-    await restartApp();
   } else {
-    console.log(`✅ [${timestamp}] Status: ${pm2Status.status} | Restarts: ${pm2Status.restarts}`);
+    // App is running - just log status (NO HTTP request, NO database wake)
+    console.log(`✅ [${timestamp}] Status: ${pm2Status.status} | Restarts: ${pm2Status.restarts} | Memory: ${Math.round(pm2Status.memory / 1024 / 1024)}MB`);
   }
 }
 

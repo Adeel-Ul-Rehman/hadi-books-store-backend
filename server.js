@@ -118,22 +118,34 @@ app.get('/', (req, res) => {
   res.send('Backend is running');
 });
 
-app.get('/health', async (req, res) => {
+// Simple health check - NO DATABASE QUERY (to save database hours)
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
+    }
+  });
+});
+
+// Database health check - ONLY USE THIS MANUALLY FOR DEBUGGING
+app.get('/health/db', async (req, res) => {
   try {
-    // Check database connection
     await prisma.$queryRaw`SELECT 1`;
     res.status(200).json({ 
       status: 'healthy',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      database: 'connected'
+      database: 'connected',
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     res.status(503).json({ 
       status: 'unhealthy',
+      database: 'disconnected',
       error: error.message,
-      timestamp: new Date().toISOString(),
-      database: 'disconnected'
+      timestamp: new Date().toISOString()
     });
   }
 });
