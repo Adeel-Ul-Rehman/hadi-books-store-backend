@@ -4,13 +4,14 @@ const allowedOrigins = [
   'https://hadibookstore.shop',
   'https://www.hadibookstore.shop',
   'https://api.hadibookstore.shop',
+  'https://admin-panel-alpha-five.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174'
 ];
 
 const addCorsHeaders = (req, res) => {
   const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop'))) {
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.hadibookstore.shop') || origin.endsWith('.vercel.app'))) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
   }
