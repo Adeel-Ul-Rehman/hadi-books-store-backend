@@ -113,8 +113,29 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running' });
 });
 
+// Health check endpoint
 app.get('/', (req, res) => {
   res.send('Backend is running');
+});
+
+app.get('/health', async (req, res) => {
+  try {
+    // Check database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ 
+      status: 'healthy',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      database: 'disconnected'
+    });
+  }
 });
 
 // 404 handler
@@ -176,17 +197,37 @@ server.on('error', (error) => {
   }
 });
 
-// Handle unhandled promise rejections
+// Handle unhandled promise rejections - KEEP SERVER ALIVE
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't crash the server, just log it
+  console.error('❌ Unhandled Promise Rejection:', {
+    reason: reason,
+    promise: promise,
+    timestamp: new Date().toISOString()
+  });
+  // IMPORTANT: Don't call process.exit() - let server continue
+  console.log('⚠️ Server continuing despite unhandled rejection...');
 });
 
-// Handle uncaught exceptions
+// Handle uncaught exceptions - KEEP SERVER ALIVE
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  // Log but don't crash - PM2 will restart if needed
+  console.error('❌ Uncaught Exception:', {
+    message: error.message,
+    stack: error.stack,
+    timestamp: new Date().toISOString()
+  });
+  // IMPORTANT: Don't call process.exit() - let server continue
   console.log('⚠️ Server continuing despite uncaught exception...');
+  
+  // If it's a really critical error, PM2 will restart automatically
+});
+
+// Handle warnings
+process.on('warning', (warning) => {
+  console.warn('⚠️ Node.js Warning:', {
+    name: warning.name,
+    message: warning.message,
+    stack: warning.stack
+  });
 });
 
 // Graceful shutdown
