@@ -70,6 +70,16 @@ app.use(cors(corsOptions));
 // Handle OPTIONS requests for all routes
 app.options('*', cors(corsOptions));
 
+// Prevent Cloudflare from caching API responses (especially CORS headers)
+app.use('/api', (req, res, next) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  });
+  next();
+});
+
 // Session middleware for Google OAuth
 app.use(
   session({
