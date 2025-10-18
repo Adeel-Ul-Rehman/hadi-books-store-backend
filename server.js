@@ -122,15 +122,30 @@ app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: 'API endpoint not found' });
 });
 
-// Error handler
+// Error handler - Enhanced with detailed logging and safe error responses
 app.use((err, req, res, next) => {
-  console.error('Global error:', err);
-  res.status(500).json({ success: false, message: 'Internal server error' });
+  console.error('❌ Global Error Handler Caught:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    body: req.body,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Don't crash the server, always respond
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({ 
+      success: false, 
+      message: err.message || 'Internal server error',
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
+  }
 });
 
 // Start server
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   try {
     await prisma.$connect();
     console.log(`✅ Server running on port ${PORT}`);
@@ -138,13 +153,59 @@ app.listen(PORT, async () => {
     console.log('✅ Session middleware configured for Google OAuth');
   } catch (error) {
     console.error('❌ Database connection error:', error);
+    // Don't exit immediately, try to reconnect
+    console.log('⚠️ Retrying database connection in 5 seconds...');
+    setTimeout(async () => {
+      try {
+        await prisma.$connect();
+        console.log('✅ Database reconnected successfully');
+      } catch (retryError) {
+        console.error('❌ Database reconnection failed:', retryError);
+        process.exit(1);
+      }
+    }, 5000);
+  }
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('❌ Server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
     process.exit(1);
   }
 });
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't crash the server, just log it
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Log but don't crash - PM2 will restart if needed
+  console.log('⚠️ Server continuing despite uncaught exception...');
+});
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('Shutting down server...');
-  await prisma.$disconnect();
-  process.exit(0);
+  console.log('📴 SIGTERM signal received: closing HTTP server');
+  server.close(async () => {
+    console.log('📴 HTTP server closed');
+    await prisma.$disconnect();
+    console.log('📴 Database connection closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', async () => {
+  console.log('📴 SIGINT signal received: closing HTTP server');
+  server.close(async () => {
+    console.log('📴 HTTP server closed');
+    await prisma.$disconnect();
+    console.log('📴 Database connection closed');
+    process.exit(0);
+  });
 });
