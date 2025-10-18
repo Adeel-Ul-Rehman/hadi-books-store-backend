@@ -191,12 +191,13 @@ Order Date: ${order.createdAt.toISOString()}
       await resend.emails.send({
         from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: 'hadibooksstore01@gmail.com',
-        subject: `[USER ORDER] New Order - ${order.id}`,
+        subject: `[USER ORDER] #${order.id.substring(0, 8)} - Hadi Books Store`,
+        replyTo: 'hadibooksstore01@gmail.com',
         text: emailContent,
       });
       console.log('✅ Order confirmation email sent to admin');
     } catch (emailError) {
-      console.error('❌ Failed to send order confirmation email:', emailError.message);
+      console.error('❌ Failed to send order confirmation email:', emailError);
       // Don't fail the order if email fails
     }
 

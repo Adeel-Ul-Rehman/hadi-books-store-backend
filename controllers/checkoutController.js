@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import validator from 'validator';
 import upload, { cleanupTempFiles } from '../middleware/multer.js';
 import cloudinary from '../config/cloudinary.js';
-import resend from '../config/resend.js';
+import { sendOrderConfirmationEmail } from '../utils/emailHelper.js';
 
 const prisma = new PrismaClient();
 
@@ -272,32 +272,37 @@ Payment Method: ${order.paymentMethod || 'Not specified'}
 Order Date: ${order.createdAt.toISOString()}
 `;
 
-      // Send email to user
+      // Send email to user using professional HTML template
       if (userRecord?.email) {
         try {
-          await resend.emails.send({
-            from: 'Hadi Books Store <noreply@hadibookstore.shop>',
-            to: userRecord.email,
-            subject: `Order Confirmation - ${order.id}`,
-            text: emailContentUser,
-          });
-          console.log('Order confirmation email sent to:', userRecord.email);
+          await sendOrderConfirmationEmail(
+            userRecord.email,
+            userRecord.name || 'Customer',
+            {
+              orderId: order.id.substring(0, 8),
+              totalAmount: order.totalPrice.toFixed(2),
+              paymentMethod: order.paymentMethod || 'Not specified'
+            }
+          );
+          console.log('✅ Order confirmation email sent to:', userRecord.email);
         } catch (emailErr) {
-          console.error('Failed to send order confirmation email to user:', emailErr.message);
+          console.error('❌ Failed to send order confirmation email to user:', emailErr);
         }
       }
 
-      // Send email to admin
+      // Send admin notification (keep as text for backend processing)
       try {
+        const { default: resend } = await import('../config/resend.js');
         await resend.emails.send({
           from: 'Hadi Books Store <noreply@hadibookstore.shop>',
           to: 'hadibooksstore01@gmail.com',
-          subject: `New Order - ${order.id}`,
+          subject: `[USER ORDER] #${order.id.substring(0, 8)} - Hadi Books Store`,
+          replyTo: userRecord?.email || 'hadibooksstore01@gmail.com',
           text: emailContentAdmin,
         });
-        console.log('Admin notification email sent for order:', order.id);
+        console.log('✅ Admin notification email sent for order:', order.id);
       } catch (emailErr) {
-        console.error('Failed to send admin notification for order:', emailErr.message);
+        console.error('❌ Failed to send admin notification for order:', emailErr);
       }
     } catch (err) {
       console.error('Error preparing/sending order emails for logged-in user:', err);

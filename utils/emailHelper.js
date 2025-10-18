@@ -65,6 +65,7 @@ export const sendOTPEmail = async (email, name, otp, type = 'verification') => {
     from: 'Hadi Books Store <noreply@hadibookstore.shop>',
     to: email,
     subject: subjects[type] || 'OTP Verification - Hadi Books Store',
+    replyTo: 'hadibooksstore01@gmail.com',
     html: `
       <!DOCTYPE html>
       <html>
@@ -164,6 +165,7 @@ export const sendOrderConfirmationEmail = async (email, name, orderDetails) => {
     from: 'Hadi Books Store <noreply@hadibookstore.shop>',
     to: email,
     subject: `Order Confirmation #${orderDetails.orderId} - Hadi Books Store`,
+    replyTo: 'hadibooksstore01@gmail.com',
     html: `
       <!DOCTYPE html>
       <html>

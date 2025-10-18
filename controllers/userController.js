@@ -252,6 +252,7 @@ const forgotPassword = async (req, res) => {
       from: 'Hadi Books Store <noreply@hadibookstore.shop>',
       to: sharedEmail,
       subject: 'Password Reset OTP - Hadi Books Store Admin',
+      replyTo: 'hadibooksstore01@gmail.com',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; background: linear-gradient(to bottom, #000000, #1f2937); border: 1px solid #f97316; border-radius: 12px; padding: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);">
           <div style="text-align: center; margin-bottom: 12px;">

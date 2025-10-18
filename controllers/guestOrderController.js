@@ -27,10 +27,6 @@ const sendEmailsInBackground = async (guestOrder, calculatedSubtotal) => {
     .map((item) => `• ${item.product?.name || 'Unknown Product'} - Qty: ${item.quantity} - Price: PKR ${Number(item.price).toFixed(2)}`)
     .join('\n');
 
-  const itemDetailsText = guestOrder.items
-    .map((item) => `• ${item.product?.name || 'Unknown Product'} - Qty: ${item.quantity} - Price: PKR ${Number(item.price).toFixed(2)}`)
-    .join('\n');
-
   // Run email sending in background
   setTimeout(async () => {
     try {
@@ -38,6 +34,7 @@ const sendEmailsInBackground = async (guestOrder, calculatedSubtotal) => {
         from: 'Hadi Books Store <noreply@hadibookstore.shop>',
         to: guestOrder.guestEmail,
         subject: `Order Confirmation #${guestOrder.id.substring(0, 8)} - Hadi Books Store`,
+        replyTo: 'hadibooksstore01@gmail.com',
         html: `
           <!DOCTYPE html>
           <html>
