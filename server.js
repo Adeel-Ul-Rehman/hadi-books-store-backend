@@ -44,10 +44,10 @@ const corsOptions = {
     // Allow exact matches from our list
     if (allowedOrigins.includes(origin)) return callback(null, true);
 
-    // Allow any subdomain of hadibookstore.shop
+    // Allow any subdomain of hadibookstore.shop or vercel.app
     try {
       const url = new URL(origin);
-      if (url.hostname && url.hostname.endsWith('.hadibookstore.shop')) {
+      if (url.hostname && (url.hostname.endsWith('.hadibookstore.shop') || url.hostname.endsWith('.vercel.app'))) {
         return callback(null, true);
       }
     } catch (e) {
