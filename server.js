@@ -38,23 +38,32 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
+    console.log('🔍 CORS Check - Origin:', origin);
+    
     // Allow requests with no origin (e.g., Postman, mobile apps)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('✅ No origin - allowed');
+      return callback(null, true);
+    }
 
     // Allow exact matches from our list
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      console.log('✅ Exact match - allowed:', origin);
+      return callback(null, true);
+    }
 
     // Allow any subdomain of hadibookstore.shop or vercel.app
     try {
       const url = new URL(origin);
       if (url.hostname && (url.hostname.endsWith('.hadibookstore.shop') || url.hostname.endsWith('.vercel.app'))) {
+        console.log('✅ Wildcard match - allowed:', origin);
         return callback(null, true);
       }
     } catch (e) {
       // Fall through to block
     }
 
-    console.warn('CORS blocked for origin:', origin);
+    console.warn('❌ CORS blocked for origin:', origin);
     return callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true,
