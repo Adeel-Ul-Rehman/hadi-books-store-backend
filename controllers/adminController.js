@@ -693,6 +693,84 @@ const getOrders = async (req, res) => {
   }
 };
 
+const deleteOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if order exists
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: { items: true, payment: true }
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Delete related order items first
+    await prisma.orderItem.deleteMany({
+      where: { orderId: id }
+    });
+
+    // Delete payment if exists
+    if (order.payment) {
+      await prisma.payment.deleteMany({
+        where: { orderId: id }
+      });
+    }
+
+    // Delete the order
+    await prisma.order.delete({
+      where: { id }
+    });
+
+    console.log(`🗑️ Deleted user order ${id} from database`);
+    return res.status(200).json({ success: true, message: 'Order deleted successfully from database' });
+  } catch (error) {
+    console.error('Delete Order Error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete order' });
+  }
+};
+
+const deleteGuestOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if guest order exists
+    const guestOrder = await prisma.guestOrder.findUnique({
+      where: { id },
+      include: { items: true, payment: true }
+    });
+
+    if (!guestOrder) {
+      return res.status(404).json({ success: false, message: 'Guest order not found' });
+    }
+
+    // Delete related guest order items first
+    await prisma.guestOrderItem.deleteMany({
+      where: { guestOrderId: id }
+    });
+
+    // Delete payment if exists
+    if (guestOrder.payment) {
+      await prisma.payment.deleteMany({
+        where: { guestOrderId: id }
+      });
+    }
+
+    // Delete the guest order
+    await prisma.guestOrder.delete({
+      where: { id }
+    });
+
+    console.log(`🗑️ Deleted guest order ${id} from database`);
+    return res.status(200).json({ success: true, message: 'Guest order deleted successfully from database' });
+  } catch (error) {
+    console.error('Delete Guest Order Error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete guest order' });
+  }
+};
+
 const getOrderStats = async (req, res) => {
   try {
     const [
@@ -997,6 +1075,8 @@ export {
   updateOrderStatus,
   getOrders,
   getOrderStats,
+  deleteOrder,
+  deleteGuestOrder,
   getAllHeroImages,
   addHeroImage,
   updateHeroImage,

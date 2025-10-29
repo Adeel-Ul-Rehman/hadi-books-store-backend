@@ -11,6 +11,8 @@ import {
   updateOrderStatus,
   getOrders,
   getOrderStats,
+  deleteOrder,
+  deleteGuestOrder,
   getAllHeroImages,
   addHeroImage,
   updateHeroImage,
@@ -35,6 +37,8 @@ router.patch('/toggle-bestseller/:id', adminAuth, toggleBestseller);
 router.put('/status/:id', adminAuth, updateOrderStatus);
 router.get('/all', adminAuth, getOrders);
 router.get('/order-stats', adminAuth, getOrderStats);
+router.delete('/delete-order/:id', adminAuth, deleteOrder);
+router.delete('/delete-guest-order/:id', adminAuth, deleteGuestOrder);
 
 // Hero image routes
 router.get('/hero/all', adminAuth, getAllHeroImages);
