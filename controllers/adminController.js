@@ -699,32 +699,19 @@ const deleteOrder = async (req, res) => {
 
     // Check if order exists
     const order = await prisma.order.findUnique({
-      where: { id },
-      include: { items: true, payment: true }
+      where: { id }
     });
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Delete related order items first
-    await prisma.orderItem.deleteMany({
-      where: { orderId: id }
-    });
-
-    // Delete payment if exists
-    if (order.payment) {
-      await prisma.payment.deleteMany({
-        where: { orderId: id }
-      });
-    }
-
-    // Delete the order
+    // Delete the order (cascade will handle items and payment)
     await prisma.order.delete({
       where: { id }
     });
 
-    console.log(`🗑️ Deleted user order ${id} from database`);
+    console.log(`🗑️ Deleted user order ${id} from database (cascade deleted items and payment)`);
     return res.status(200).json({ success: true, message: 'Order deleted successfully from database' });
   } catch (error) {
     console.error('Delete Order Error:', error);
@@ -738,32 +725,19 @@ const deleteGuestOrder = async (req, res) => {
 
     // Check if guest order exists
     const guestOrder = await prisma.guestOrder.findUnique({
-      where: { id },
-      include: { items: true, payment: true }
+      where: { id }
     });
 
     if (!guestOrder) {
       return res.status(404).json({ success: false, message: 'Guest order not found' });
     }
 
-    // Delete related guest order items first
-    await prisma.guestOrderItem.deleteMany({
-      where: { guestOrderId: id }
-    });
-
-    // Delete payment if exists
-    if (guestOrder.payment) {
-      await prisma.payment.deleteMany({
-        where: { guestOrderId: id }
-      });
-    }
-
-    // Delete the guest order
+    // Delete the guest order (cascade will handle items and payment)
     await prisma.guestOrder.delete({
       where: { id }
     });
 
-    console.log(`🗑️ Deleted guest order ${id} from database`);
+    console.log(`🗑️ Deleted guest order ${id} from database (cascade deleted items and payment)`);
     return res.status(200).json({ success: true, message: 'Guest order deleted successfully from database' });
   } catch (error) {
     console.error('Delete Guest Order Error:', error);
