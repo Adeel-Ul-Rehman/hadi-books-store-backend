@@ -682,6 +682,8 @@ const getOrders = async (req, res) => {
       // Sort by createdAt desc
       combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+      console.log(`📦 Orders fetched from database: ${combined.length} total (${normalizedUserOrders.length} user orders, ${normalizedGuestOrders.length} guest orders)`);
+
       const message = combined.length === 0 ? 'No orders available yet' : 'Orders retrieved';
 
       return res.status(200).json({ success: true, message, orders: combined });
