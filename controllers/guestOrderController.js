@@ -233,12 +233,12 @@ export const createGuestOrder = async (req, res) => {
       onlinePaymentOption,
     });
 
-    // Enhanced validation - require: name, email, shippingAddress, city, country, items. Optional: postCode (can be null).
+    // Enhanced validation - require: name, email, phone, shippingAddress, city, country, items. Optional: postCode (can be null).
     console.time('validateInput');
-    if (!guestName || !guestEmail || !shippingAddress || !city || !country || !items || !Array.isArray(items) || items.length === 0 || !totalPrice) {
+    if (!guestName || !guestEmail || !guestPhone || !shippingAddress || !city || !country || !items || !Array.isArray(items) || items.length === 0 || !totalPrice) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: name, email, shipping address, city, country, items, and total price are required',
+        message: 'Missing required fields: name, email, phone, shipping address, city, country, items, and total price are required',
       });
     }
 
@@ -248,10 +248,17 @@ export const createGuestOrder = async (req, res) => {
         message: 'Invalid email format',
       });
     }
+    
+    if (!validator.isMobilePhone(guestPhone, 'any', { strictMode: false })) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid phone number',
+      });
+    }
     console.timeEnd('validateInput');
     
-    // PostCode is optional - if empty string, convert to null
-    const finalPostCode = postCode?.trim() || null;
+    // PostCode is optional - if empty string or "N/A", convert to null
+    const finalPostCode = (postCode?.trim() && postCode.trim() !== "N/A") ? postCode.trim() : null;
 
     // Validate items and product availability
     console.time('validateItems');

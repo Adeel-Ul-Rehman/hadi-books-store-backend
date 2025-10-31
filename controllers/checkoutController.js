@@ -117,8 +117,8 @@ const processCheckout = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid mobile number' });
     }
     
-    // PostCode is optional - if empty string, convert to null
-    const finalPostCode = postCode?.trim() || null;
+    // PostCode is optional - if empty string or "N/A", convert to null
+    const finalPostCode = (postCode?.trim() && postCode.trim() !== "N/A") ? postCode.trim() : null;
 
     const allowedPaymentMethods = ['cod', 'online'];
     if (!allowedPaymentMethods.includes(paymentMethod)) {
