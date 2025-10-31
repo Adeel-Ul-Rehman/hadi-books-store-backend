@@ -91,6 +91,7 @@ const processCheckout = async (req, res) => {
     console.log('🛒 Process Checkout - User ID:', userId);
     console.log('📦 Items received:', items?.length || 0);
     console.log('📍 Address info:', { address, city, postCode, country, mobileNumber });
+    console.log('📋 Full request body:', JSON.stringify(req.body, null, 2));
 
     // Validate input
     if (!userId) {
