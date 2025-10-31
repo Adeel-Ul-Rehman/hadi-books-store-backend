@@ -105,10 +105,11 @@ const processCheckout = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Your cart is empty. Please add items before checkout.' });
     }
     
-    if (!address || !city || !postCode || !country || !mobileNumber) {
-      console.error('❌ Checkout failed: Missing address fields');
+    // postCode is optional, other fields are required
+    if (!address || !city || !country || !mobileNumber) {
+      console.error('❌ Checkout failed: Missing required address fields');
       addCorsHeaders(req, res);
-      return res.status(400).json({ success: false, message: 'Please fill in all shipping information fields.' });
+      return res.status(400).json({ success: false, message: 'Please fill in all required shipping information fields (address, city, country, mobile number).' });
     }
     if (!validator.isMobilePhone(mobileNumber, 'any', { strictMode: false })) {
       addCorsHeaders(req, res);
@@ -162,15 +163,21 @@ const processCheckout = async (req, res) => {
     // If saveInfo is true, update user profile
     let updatedUser = null;
     if (saveInfo) {
+      // Build shipping address with optional postCode
+      const shippingAddressParts = [address, city];
+      if (postCode) shippingAddressParts.push(postCode);
+      shippingAddressParts.push(country);
+      const shippingAddress = shippingAddressParts.join(', ');
+      
       updatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
           address,
           city,
-          postCode,
+          postCode: postCode || null,
           country,
           mobileNumber,
-          shippingAddress: `${address}, ${city}, ${postCode}, ${country}`,
+          shippingAddress,
         },
         select: {
           id: true,
@@ -190,11 +197,18 @@ const processCheckout = async (req, res) => {
     // Create order
     const order = await prisma.$transaction(async (tx) => {
       console.log('📝 Creating order for user:', userId);
+      
+      // Build shipping address with optional postCode
+      const orderShippingParts = [address, city];
+      if (postCode) orderShippingParts.push(postCode);
+      orderShippingParts.push(country);
+      const orderShippingAddress = orderShippingParts.join(', ');
+      
       const orderData = await tx.order.create({
         data: {
           userId,
           totalPrice,
-          shippingAddress: `${address}, ${city}, ${postCode}, ${country}`,
+          shippingAddress: orderShippingAddress,
           paymentMethod: storedPaymentMethod,
           taxes,
           shippingFee,
