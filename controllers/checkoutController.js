@@ -88,10 +88,27 @@ const processCheckout = async (req, res) => {
     const { address, city, postCode, country, mobileNumber, saveInfo, items, taxes = 0, shippingFee = 0, paymentMethod, onlinePaymentOption } = req.body;
     const userId = req.userId;
 
+    console.log('🛒 Process Checkout - User ID:', userId);
+    console.log('📦 Items received:', items?.length || 0);
+    console.log('📍 Address info:', { address, city, postCode, country, mobileNumber });
+
     // Validate input
-    if (!userId || !items || !Array.isArray(items) || items.length === 0 || !address || !city || !postCode || !country || !mobileNumber) {
+    if (!userId) {
+      console.error('❌ Checkout failed: No user ID');
       addCorsHeaders(req, res);
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+      return res.status(401).json({ success: false, message: 'User authentication required. Please log in again.' });
+    }
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.error('❌ Checkout failed: No items in cart');
+      addCorsHeaders(req, res);
+      return res.status(400).json({ success: false, message: 'Your cart is empty. Please add items before checkout.' });
+    }
+    
+    if (!address || !city || !postCode || !country || !mobileNumber) {
+      console.error('❌ Checkout failed: Missing address fields');
+      addCorsHeaders(req, res);
+      return res.status(400).json({ success: false, message: 'Please fill in all shipping information fields.' });
     }
     if (!validator.isMobilePhone(mobileNumber, 'any', { strictMode: false })) {
       addCorsHeaders(req, res);
@@ -172,6 +189,7 @@ const processCheckout = async (req, res) => {
 
     // Create order
     const order = await prisma.$transaction(async (tx) => {
+      console.log('📝 Creating order for user:', userId);
       const orderData = await tx.order.create({
         data: {
           userId,
@@ -190,6 +208,8 @@ const processCheckout = async (req, res) => {
         },
         include: { items: { include: { product: true } } },
       });
+
+      console.log('✅ Order created successfully:', orderData.id);
 
       if (paymentMethod === 'online') {
         await tx.payment.create({
@@ -348,9 +368,12 @@ Order Date: ${order.createdAt.toISOString()}
       } : null,
     });
   } catch (error) {
-    console.error('Process Checkout Error:', error.message, error.stack);
+    console.error('❌ Process Checkout Error:', error.message);
+    console.error('Stack trace:', error.stack);
+    console.error('User ID:', req.userId);
+    console.error('Request body:', JSON.stringify(req.body, null, 2));
     addCorsHeaders(req, res);
-    return res.status(500).json({ success: false, message: 'Failed to process checkout' });
+    return res.status(500).json({ success: false, message: 'Failed to process checkout. Please try again or contact support.' });
   }
 };
 
