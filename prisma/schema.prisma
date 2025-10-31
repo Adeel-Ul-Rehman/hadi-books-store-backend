@@ -14,9 +14,9 @@ model User {
   email              String     @unique
   password           String?    // Changed from required to optional
   address            String?
-  postCode           String?
+  postCode           String?    // Optional postal code
   city               String?
-  country            String?
+  country            String?    @default("Pakistan") // Default country
   shippingAddress    String?
   mobileNumber       String?
   verifyOtp          String     @default("")
@@ -221,9 +221,9 @@ model GuestOrder {
   guestName            String     // Guest's name
   guestPhone           String?    // Guest's phone number
   shippingAddress      String     // Required for guest orders
-  city                 String?    // Optional city for guest orders
+  city                 String     // Required city for guest orders
   postCode             String?    // Optional postal code for guest orders
-  country              String?    // Optional country for guest orders
+  country              String     @default("Pakistan") // Default country
   totalPrice           Float
   status               String     @default("pending")
   paymentStatus        String     @default("not_paid")
