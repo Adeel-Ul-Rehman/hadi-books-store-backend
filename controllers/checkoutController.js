@@ -105,16 +105,19 @@ const processCheckout = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Your cart is empty. Please add items before checkout.' });
     }
     
-    // postCode is optional, other fields are required
-    if (!address || !city || !country || !mobileNumber) {
-      console.error('❌ Checkout failed: Missing required address fields');
+    // Required: address, city, mobileNumber. Optional: postCode. Country defaults to Pakistan.
+    if (!address || !city || !mobileNumber) {
+      console.error('❌ Checkout failed: Missing required fields');
       addCorsHeaders(req, res);
-      return res.status(400).json({ success: false, message: 'Please fill in all required shipping information fields (address, city, country, mobile number).' });
+      return res.status(400).json({ success: false, message: 'Address, city, and mobile number are required.' });
     }
     if (!validator.isMobilePhone(mobileNumber, 'any', { strictMode: false })) {
       addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Invalid mobile number' });
     }
+    
+    // Set country to Pakistan by default
+    const finalCountry = country || 'Pakistan';
 
     const allowedPaymentMethods = ['cod', 'online'];
     if (!allowedPaymentMethods.includes(paymentMethod)) {
@@ -163,10 +166,10 @@ const processCheckout = async (req, res) => {
     // If saveInfo is true, update user profile
     let updatedUser = null;
     if (saveInfo) {
-      // Build shipping address with optional postCode
+      // Build shipping address: address, city, [postCode], country
       const shippingAddressParts = [address, city];
       if (postCode) shippingAddressParts.push(postCode);
-      shippingAddressParts.push(country);
+      shippingAddressParts.push(finalCountry);
       const shippingAddress = shippingAddressParts.join(', ');
       
       updatedUser = await prisma.user.update({
@@ -175,7 +178,7 @@ const processCheckout = async (req, res) => {
           address,
           city,
           postCode: postCode || null,
-          country,
+          country: finalCountry,
           mobileNumber,
           shippingAddress,
         },
@@ -198,10 +201,10 @@ const processCheckout = async (req, res) => {
     const order = await prisma.$transaction(async (tx) => {
       console.log('📝 Creating order for user:', userId);
       
-      // Build shipping address with optional postCode
+      // Build shipping address: address, city, [postCode], country
       const orderShippingParts = [address, city];
       if (postCode) orderShippingParts.push(postCode);
-      orderShippingParts.push(country);
+      orderShippingParts.push(finalCountry);
       const orderShippingAddress = orderShippingParts.join(', ');
       
       const orderData = await tx.order.create({
