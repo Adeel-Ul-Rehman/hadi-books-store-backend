@@ -106,19 +106,19 @@ const processCheckout = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Your cart is empty. Please add items before checkout.' });
     }
     
-    // Required: address, city, mobileNumber. Optional: postCode. Country defaults to Pakistan.
-    if (!address || !city || !mobileNumber) {
-      console.error('❌ Checkout failed: Missing required fields');
+    // Required: address, city, country, mobileNumber. Optional: postCode (can be null).
+    if (!address || !city || !country || !mobileNumber) {
+      console.error('❌ Checkout failed: Missing required fields', { address: !!address, city: !!city, country: !!country, mobileNumber: !!mobileNumber });
       addCorsHeaders(req, res);
-      return res.status(400).json({ success: false, message: 'Address, city, and mobile number are required.' });
+      return res.status(400).json({ success: false, message: 'Address, city, country, and mobile number are required.' });
     }
     if (!validator.isMobilePhone(mobileNumber, 'any', { strictMode: false })) {
       addCorsHeaders(req, res);
       return res.status(400).json({ success: false, message: 'Invalid mobile number' });
     }
     
-    // Set country to Pakistan by default
-    const finalCountry = country || 'Pakistan';
+    // PostCode is optional - if empty string, convert to null
+    const finalPostCode = postCode?.trim() || null;
 
     const allowedPaymentMethods = ['cod', 'online'];
     if (!allowedPaymentMethods.includes(paymentMethod)) {
@@ -169,8 +169,8 @@ const processCheckout = async (req, res) => {
     if (saveInfo) {
       // Build shipping address: address, city, [postCode], country
       const shippingAddressParts = [address, city];
-      if (postCode) shippingAddressParts.push(postCode);
-      shippingAddressParts.push(finalCountry);
+      if (finalPostCode) shippingAddressParts.push(finalPostCode); // Only add if not null
+      shippingAddressParts.push(country);
       const shippingAddress = shippingAddressParts.join(', ');
       
       updatedUser = await prisma.user.update({
@@ -178,8 +178,8 @@ const processCheckout = async (req, res) => {
         data: {
           address,
           city,
-          postCode: postCode || null,
-          country: finalCountry,
+          postCode: finalPostCode, // Store null if empty
+          country,
           mobileNumber,
           shippingAddress,
         },
@@ -204,8 +204,8 @@ const processCheckout = async (req, res) => {
       
       // Build shipping address: address, city, [postCode], country
       const orderShippingParts = [address, city];
-      if (postCode) orderShippingParts.push(postCode);
-      orderShippingParts.push(finalCountry);
+      if (finalPostCode) orderShippingParts.push(finalPostCode); // Only add if not null
+      orderShippingParts.push(country);
       const orderShippingAddress = orderShippingParts.join(', ');
       
       const orderData = await tx.order.create({
@@ -267,9 +267,6 @@ Order ID: ${order.id}
 Name: ${userRecord?.name || 'Customer'}
 Email: ${userRecord?.email || 'Not provided'}
 Shipping Address: ${order.shippingAddress}
-City: ${order.city || 'Not provided'}
-Postal Code: ${order.postCode || 'Not provided'}
-Country: ${order.country || 'Not provided'}
 
 Order Details:
 ${itemDetails}
@@ -293,9 +290,6 @@ Customer Details:
   Email: ${userRecord?.email || 'Not provided'}
   Phone: ${mobileNumber || userRecord?.mobileNumber || 'Not provided'}
   Shipping Address: ${order.shippingAddress}
-  City: ${order.city || 'Not provided'}
-  Postal Code: ${order.postCode || 'Not provided'}
-  Country: ${order.country || 'Not provided'}
 
 Order Details:
 ${itemDetails}

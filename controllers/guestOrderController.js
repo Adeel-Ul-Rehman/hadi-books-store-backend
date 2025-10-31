@@ -233,12 +233,12 @@ export const createGuestOrder = async (req, res) => {
       onlinePaymentOption,
     });
 
-    // Enhanced validation - require: name, email, shippingAddress, city, items. Optional: postCode. Country defaults to Pakistan.
+    // Enhanced validation - require: name, email, shippingAddress, city, country, items. Optional: postCode (can be null).
     console.time('validateInput');
-    if (!guestName || !guestEmail || !shippingAddress || !city || !items || !Array.isArray(items) || items.length === 0 || !totalPrice) {
+    if (!guestName || !guestEmail || !shippingAddress || !city || !country || !items || !Array.isArray(items) || items.length === 0 || !totalPrice) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: name, email, shipping address, city, items, and total price are required',
+        message: 'Missing required fields: name, email, shipping address, city, country, items, and total price are required',
       });
     }
 
@@ -250,8 +250,8 @@ export const createGuestOrder = async (req, res) => {
     }
     console.timeEnd('validateInput');
     
-    // Set country to Pakistan by default
-    const finalCountry = country || 'Pakistan';
+    // PostCode is optional - if empty string, convert to null
+    const finalPostCode = postCode?.trim() || null;
 
     // Validate items and product availability
     console.time('validateItems');
@@ -339,8 +339,8 @@ export const createGuestOrder = async (req, res) => {
         guestPhone: guestPhone ? guestPhone.trim() : null,
         shippingAddress: shippingAddress.trim(),
         city: city.trim(),
-        postCode: postCode ? postCode.trim() : null,
-        country: finalCountry,
+        postCode: finalPostCode, // Store null if empty
+        country,
         totalPrice,
         paymentMethod: storedPaymentMethod,
         taxes,
